@@ -1,7 +1,76 @@
-https://musicaguegan.netlify.app/
+#!/bin/bash
+# UN SEUL copier-coller pour TOUT installer
 
+# Créer dossiers
+mkdir -p /var/www/html/{api,frontend}
 
-sudo -u www-data pm2 start /var/www/html/api/server.js --name music-api --node-args="--use-strict"
-sudo -u www-data pm2 save
-sudo env PATH=$PATH:/usr/bin /usr/local/lib/node_modules/pm2/bin/pm2 startup systemd -u www-data --hp /var/www
+# === FICHIER 1 : server.js ===
+cat > /var/www/html/api/server.js << 'EOF'
+const express = require('express');
+const session = require('express-session');
+const fs = require('fs');
+const cors = require('cors');
+const app = express();
+const PORT = 3000;
 
+const DIR_MP3 = '/var/www/html/mp3/_allmp3/';
+const DIR_MIX = '/var/www/html/mp3/PIONEER_REC2/';
+
+app.use(cors({origin: 'https://musica.zapto.org', credentials: true}));
+app.use(express.json());
+app.use(session({secret: 'musica-secret-2025', resave: false, saveUninitialized: true, cookie: {secure: true, httpOnly: true, maxAge: 86400000}}));
+
+function getAllMp3(dir) { return fs.readdirSync(dir).filter(f => f.endsWith('.mp3')); }
+
+app.get('/api/next-song', (req, res) => {
+    if (!req.session.playedSongs) req.session.playedSongs = [];
+    const allSongs = getAllMp3(DIR_MP3);
+    let available = allSongs.filter(s => !req.session.playedSongs.includes(s));
+    if (!available.length) { req.session.playedSongs = []; available = allSongs; }
+    const song = available[Math.floor(Math.random() * available.length)];
+    req.session.playedSongs.push(song);
+    const color = '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0');
+    const inverse = '#' + (16777215 - parseInt(color.substring(1), 16)).toString(16).padStart(6, '0');
+    res.json({song, songName: song.replace('.mp3', ''), url: `/mp3/_allmp3/${song}`, cover: `/mp3/_alljpg/${song}.jpg`, played: req.session.playedSongs.length, total: allSongs.length, color, textColor: inverse});
+});
+
+app.get('/api/next-mix', (req, res) => {
+    if (!req.session.playedMixes) req.session.playedMixes = [];
+    const all = getAllMp3(DIR_MIX);
+    let available = all.filter(m => !req.session.playedMixes.includes(m));
+    if (!available.length) { req.session.playedMixes = []; available = all; }
+    const mix = available[Math.floor(Math.random() * available.length)];
+    req.session.playedMixes.push(mix);
+    res.json({mix, mixName: mix.replace('.mp3', ''), url: `/mp3/PIONEER_REC2/${mix}`});
+});
+
+app.get('/api/stats', (req, res) => res.json({totalHits: parseInt(fs.readFileSync('/var/www/html/count.txt', 'utf8') || '0'), sessionPlayed: req.session.playedSongs?.length || 0, totalSongs: getAllMp3(DIR_MP3).length}));
+
+app.post('/api/increment-hits', (req, res) => {
+    const file = '/var/www/html/count.txt';
+    const count = parseInt(fs.readFileSync(file, 'utf8') || '0') + 1;
+    fs.writeFileSync(file, count.toString());
+    res.json({hits: count});
+});
+
+app.listen(PORT, () => console.log('🎵 API sur :3000'));
+EOF
+
+# === FICHIER 2 : package.json ===
+cat > /var/www/html/api/package.json << 'EOF'
+{"name":"musica-api","version":"1.0.0","main":"server.js","dependencies":{"express":"^4.18.2","express-session":"^1.17.3","cors":"^2.8.5"}}
+EOF
+
+# === FICHIER 3 : index.html ===
+cat > /var/www/html/frontend/index.html << 'EOFHTML'
+<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Musica</title><script src="https://unpkg.com/vue@3"></script><script src="https://unpkg.com/axios"></script><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Lucida Sans',sans-serif}.container{min-height:100vh;padding:20px;background-size:cover;background-position:center}.song-title{font-size:4em;margin:20px 0;text-shadow:2px 2px 4px rgba(0,0,0,0.5)}audio{width:100%;max-width:1200px;height:100px}.btn{font-size:50px;padding:45px 60px;margin:10px;border:3px solid;border-radius:12px;cursor:pointer;font-weight:bold}.section-title{font-size:2.5em;margin:40px 0 20px}.radio-btn{font-size:2em;padding:20px 40px;margin:10px 0;border-radius:12px;cursor:pointer;display:block;margin-left:125px;border:3px solid rgba(0,0,0,0.3)}.stats{margin-top:40px;font-size:1.2em;font-style:italic}</style></head><body><div id="app"><div class="container" :style="{backgroundColor:bgColor,backgroundImage:bgImage,color:textColor}"><h1 class="song-title">{{songName}}</h1><audio ref="player" :src="songUrl" controls autoplay @ended="nextSong"></audio><div class="section-title">M U $ I C</div><div class="controls"><button class="btn" :style="{backgroundColor:textColor,color:bgColor}" @click="togglePlay">Play/Pause</button><button class="btn" :style="{backgroundColor:textColor,color:bgColor}" @click="nextSong">NEXT &gt;&gt;</button></div><div v-if="mixUrl"><audio ref="mixPlayer" :src="mixUrl"></audio><button class="radio-btn" style="background-color:green;color:white" @click="toggleMix">{{mixPlaying?'⏸':'▶'}} MIX: {{mixName}}</button></div><div class="section-title">R A D I O</div><div><audio ref="radioFip" src="https://direct.fipradio.fr/live/fip-midfi.mp3"></audio><button class="radio-btn" style="background-color:#2233FF;color:white" @click="toggleRadio('fip')">{{radios.fip?'⏸':'▶'}} FIP Radio</button></div><div><audio ref="radioNova" src="https://novazz.ice.infomaniak.ch/novazz-128.mp3"></audio><button class="radio-btn" style="background-color:#FFF;color:black" @click="toggleRadio('nova')">{{radios.nova?'⏸':'▶'}} Radio NOVA</button></div><div><audio ref="radioCulture" src="https://direct.franceculture.fr/live/franceculture-midfi.mp3"></audio><button class="radio-btn" style="background-color:#F32;color:white" @click="toggleRadio('culture')">{{radios.culture?'⏸':'▶'}} France Culture</button></div><div class="stats"><p>{{stats.sessionPlayed}} mp3 lus sur {{stats.totalSongs}}</p><p style="color:black">{{stats.totalHits}} clicks - cé mizik an nou ki pli bel ®</p></div></div></div><script>const{createApp}=Vue;createApp({data(){return{songName:'',songUrl:'',bgColor:'#000',textColor:'#FFF',bgImage:'',mixName:'',mixUrl:'',mixPlaying:false,radios:{fip:false,nova:false,culture:false},stats:{totalHits:0,sessionPlayed:0,totalSongs:0}}},async mounted(){await this.loadStats();await this.nextSong();await this.loadMix();await this.incrementHits()},methods:{async nextSong(){try{const r=await axios.get('/api/next-song',{withCredentials:true});this.songName=r.data.songName;this.songUrl=r.data.url;this.bgColor=r.data.color;this.textColor=r.data.textColor;this.bgImage=`url('${r.data.cover}')`;setTimeout(()=>this.$refs.player.play(),100);await this.loadStats()}catch(e){console.error(e)}},async loadMix(){try{const r=await axios.get('/api/next-mix',{withCredentials:true});this.mixName=r.data.mixName;this.mixUrl=r.data.url}catch(e){}},togglePlay(){const p=this.$refs.player;p.paused?p.play():p.pause()},toggleMix(){const m=this.$refs.mixPlayer;if(m.paused){m.play();this.mixPlaying=true}else{m.pause();this.mixPlaying=false}},toggleRadio(n){const refs={fip:'radioFip',nova:'radioNova',culture:'radioCulture'};const p=this.$refs[refs[n]];if(p.paused){p.play();this.radios[n]=true}else{p.pause();this.radios[n]=false}},async loadStats(){try{const r=await axios.get('/api/stats',{withCredentials:true});this.stats=r.data}catch(e){}},async incrementHits(){try{await axios.post('/api/increment-hits',{},{withCredentials:true})}catch(e){}}}}).mount('#app')</script></body></html>
+EOFHTML
+
+# Installation
+cd /var/www/html/api
+npm install
+npm install -g pm2
+pm2 start server.js --name music-api
+pm2 save
+
+echo "✅ FAIT. Configure nginx maintenant."

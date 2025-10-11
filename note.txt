@@ -16,7 +16,7 @@ const PORT = 3000;
 const DIR_MP3 = '/var/www/html/mp3/_allmp3/';
 const DIR_MIX = '/var/www/html/mp3/PIONEER_REC2/';
 
-app.use(cors({origin: 'https://musica.zapto.org', credentials: true}));
+app.use(cors({origin: '*****', credentials: true}));
 app.use(express.json());
 app.use(session({secret: 'musica-secret-2025', resave: false, saveUninitialized: true, cookie: {secure: true, httpOnly: true, maxAge: 86400000}}));
 

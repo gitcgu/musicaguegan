@@ -2,5 +2,7 @@ https://musicaguegan.netlify.app/
 
 
 sudo -u www-data pm2 start /var/www/html/api/server.js --name music-api --node-args="--use-strict"
+
 sudo -u www-data pm2 save
+
 sudo env PATH=$PATH:/usr/bin /usr/local/lib/node_modules/pm2/bin/pm2 startup systemd -u www-data --hp /var/www

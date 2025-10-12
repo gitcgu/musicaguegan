@@ -6,7 +6,6 @@
     <script src="https://unpkg.com/vue@3"></script>
     <script src="https://unpkg.com/axios"></script>
     <style>
-        /* ... (vos styles CSS existants, y compris pour .btn) ... */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Lucida Sans', sans-serif; }
         .container {
@@ -40,20 +39,65 @@
             align-items: center;
             flex-wrap: wrap;
         }
+
+        /* --- STYLES POUR LES BOUTONS RONDS (PLAY/PAUSE, NEXT, PREV, REPLAY) --- */
         .btn {
-            width: 160px; height: 160px; display: flex; justify-content: center; align-items: center; border-radius: 50%; margin: 20px; border: 5px solid; border-color: inherit; font-size: 64px; font-weight: bold; cursor: pointer; transition: all 0.3s ease; text-align: center;
+            /* TAILLE DES BOUTONS MODIFIÉE COMME DEMANDÉ */
+            width: 160px;  /* Largeur augmentée */
+            height: 160px; /* Hauteur augmentée */
+            
+            display: flex;
+            justify-content: center; /* Centre le symbole horizontalement */
+            align-items: center;     /* Centre le symbole verticalement */
+            border-radius: 50%; /* Rond */
+            margin: 20px;  /* Espacement autour (augmenté) */
+            border: 5px solid; /* Épaisseur de la bordure augmentée */
+            border-color: inherit; /* Prend la couleur du texte, s'adapte dynamiquement */
+            font-size: 64px;   /* Taille du symbole augmentée */
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease; /* Effet de transition doux */
+            text-align: center;
         }
-        .btn:hover { transform: scale(1.1); filter: brightness(1.2); }
-        .section-title { font-size: 2.5em; margin: 40px 0 20px; width: 100%; }
-        .radio-btn { font-size: 2em; padding: 20px 40px; margin: 10px auto; border-radius: 12px; cursor: pointer; display: block; border: 3px solid rgba(0,0,0,0.3); max-width: 80%; }
-        .stats { margin-top: 40px; font-size: 1.2em; font-style: italic; width: 100%; }
-        .stats p { color: black; }
+        .btn:hover {
+            transform: scale(1.1); /* Légèrement plus grand */
+            filter: brightness(1.2); /* Plus lumineux */
+        }
+        /* --- FIN DES STYLES POUR .btn --- */
+
+        .section-title {
+            font-size: 2.5em;
+            margin: 40px 0 20px;
+            width: 100%;
+        }
+
+        .radio-btn {
+            font-size: 2em;
+            padding: 20px 40px;
+            margin: 10px auto; /* Centre horizontalement */
+            border-radius: 12px;
+            cursor: pointer;
+            display: block;
+            border: 3px solid rgba(0,0,0,0.3);
+            max-width: 80%;
+        }
+
+        .stats {
+            margin-top: 40px;
+            font-size: 1.2em;
+            font-style: italic;
+            width: 100%;
+        }
+        .stats p {
+            color: black; /* Applique la couleur à la phrase */
+        }
     </style>
 </head>
 <body>
     <div id="app">
         <div class="container" :style="{backgroundColor:bgColor, backgroundImage:bgImage, color:textColor}">
             <h1 class="song-title">{{songName}}</h1>
+            <!-- Le lecteur audio principal -->
             <audio ref="player" :src="songUrl" controls @ended="handleSongEnd"></audio>
 
             <div class="section-title">M U $ I C</div>
@@ -62,7 +106,7 @@
                 <button class="btn" :style="{backgroundColor:textColor,color:bgColor}" @click="previousSong">
                     &lt;&lt;
                 </button>
-                <!-- Bouton Play/Pause -->
+                <!-- Bouton Play/Pause qui affiche le symbole ▶ ou ⏸ -->
                 <button class="btn" :style="{backgroundColor:textColor,color:bgColor}" @click="togglePlay">
                     {{ player.paused ? '▶' : '⏸' }}
                 </button>
@@ -119,18 +163,19 @@
                 console.log("Composant monté. Chargement des stats, historique et première chanson...");
                 await this.loadStats();
                 // Charge les infos de la première chanson. La lecture sera déclenchée par le premier clic utilisateur.
-                await this.nextSong(false); 
+                await this.nextSong(false); // false pour ne pas incrémenter les hits au chargement initial
                 console.log("Première chanson chargée. songUrl =", this.songUrl);
             },
             methods: {
-                // Méthode pour charger la prochaine chanson
-                async nextSong(increment = true) {
+                // Méthode pour charger la prochaine chanson depuis l'API
+                async nextSong(increment = true) { // increment=true pour incrémenter les hits
                     console.log("Appel à nextSong pour charger une NOUVELLE chanson...");
                     try {
+                        // Appel API pour obtenir les infos de la chanson
                         const r = await axios.get('https://musica.zapto.org/api/next-song', { withCredentials: true });
                         console.log("Réponse API next-song:", r.data);
-                        console.log("URL de la chanson reçue :", r.data.url); // Log pour vérifier l'URL du MP3
-                        console.log("URL de la cover reçue :", r.data.cover); // Log pour vérifier l'URL de la cover
+                        console.log("URL de la chanson reçue :", r.data.url);
+                        console.log("URL de la cover reçue :", r.data.cover);
 
                         this.songName = r.data.songName;
                         this.songUrl = r.data.url; // Assignation de l'URL du MP3
@@ -138,7 +183,7 @@
                         this.textColor = r.data.textColor;
                         
                         // --- UTILISATION DIRECTE DE L'URL DE COVER ---
-                        // On utilise l'URL de cover telle qu'elle est renvoyée par le backend, sans modifier l'extension.
+                        // On utilise l'URL de cover telle qu'elle est renvoyée par le backend
                         if (r.data.cover && typeof r.data.cover === 'string') {
                             this.bgImage = `url('${r.data.cover}')`; 
                         } else {
@@ -146,7 +191,7 @@
                         }
                         console.log("bgImage configuré à :", this.bgImage);
 
-                        // Si songUrl est vide après réception des données, on alerte et on arrête
+                        // Vérification importante : si songUrl est vide après l'appel API, on alerte et on s'arrête
                         if (!this.songUrl) {
                             console.error("L'URL de la chanson est vide après l'appel API.");
                             alert("Aucune chanson chargée. Cliquez sur Next pour en charger une.");
@@ -155,18 +200,18 @@
 
                         // --- GESTION DE L'HISTORIQUE ---
                         if (this.songUrl) {
-                            thisthis.playbackHistory.push(this.songUrl); // Ajoute la nouvelle URL à l'historique
-                            if (this.playbackHistory.length > 20) { // Maintient l'historique limité
-                                this.playbackHistory.shift();
+                            this.playbackHistory.push(this.songUrl); // Ajoute la nouvelle URL à l'historique
+                            if (this.playbackHistory.length > 20) { // Garde l'historique limité
+                                this.playbackHistory.shift(); // Retire la plus ancienne
                             }
-                            this.currentHistoryIndex = this.playbackHistory.length - 1; // Met à jour l'index
+                            this.currentHistoryIndex = this.playbackHistory.length - 1; // Met à jour l'index courant
                             this.savePlaybackHistory(); // Sauvegarde dans localStorage
                             console.log("Historique mis à jour et sauvegardé :", this.playbackHistory);
                         }
                         // --- FIN GESTION HISTORIQUE ---
 
                         this.player.paused = true; // Assure que le bouton affiche '▶' pour la nouvelle chanson
-                        if (increment) { // Incrémente les hits seulement si c'est une vraie "next"
+                        if (increment) { // Incrémente seulement si c'est une vraie "next"
                             await this.loadStats();
                         }
 
@@ -184,7 +229,7 @@
                 togglePlay() {
                     const p = this.$refs.player;
 
-                    // Vérifie si songUrl est définie avant de tenter de jouer
+                    // Vérification essentielle : si songUrl est vide, on affiche l'alerte et on arrête.
                     if (!this.songUrl) {
                         console.warn("songUrl est vide, on ne peut pas jouer.");
                         alert("Aucune chanson chargée. Cliquez sur Next pour en charger une.");
@@ -199,7 +244,7 @@
                          .then(() => {
                              console.log("Lecture démarrée avec succès.");
                              this.player.paused = false; // Met à jour l'état pour afficher '⏸'
-                             this.incrementHits(); 
+                             this.incrementHits(); // Incrémente les hits si la lecture démarre
                          })
                          .catch(e => {
                              console.error("Erreur lors de la lecture de la chanson:", e);
@@ -225,7 +270,7 @@
                 // Gère l'événement @ended de l'audio (quand la chanson se termine)
                 handleSongEnd() {
                     console.log("La chanson actuelle s'est terminée.");
-                    // Passe automatiquement à la chanson suivante, sans incrémenter les hits
+                    // Passe automatiquement à la chanson suivante, sans incrémenter les hits (pas d'action utilisateur directe)
                     this.nextSong(false); 
                 },
 
@@ -300,6 +345,7 @@
                         const r = await axios.get('https://musica.zapto.org/api/stats', { withCredentials: true });
                         this.stats.totalHits = r.data.totalHits;
                         this.stats.totalSongs = r.data.totalSongs;
+                        // Ne modifie pas sessionPlayed ici car sa valeur dépend du bon fonctionnement de la session.
                     } catch (e) {
                         console.error("Erreur lors du chargement des stats:", e);
                     }

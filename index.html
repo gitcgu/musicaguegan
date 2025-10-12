@@ -1,2 +1,262 @@
-<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Musica</title><script src="https://unpkg.com/vue@3"></script><script src="https://unpkg.com/axios"></script><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Lucida Sans',sans-serif}.container{min-height:100vh;padding:20px;background-size:cover;background-position:center}.song-title{font-size:4em;margin:20px 0;text-shadow:2px 2px 4px rgba(0,0,0,0.5)}audio{width:100%;max-width:1200px;height:100px}.btn{font-size:50px;padding:45px 60px;margin:10px;border:3px solid;border-radius:12px;cursor:pointer;font-weight:bold}.section-title{font-size:2.5em;margin:40px 0 20px}.radio-btn{font-size:2em;padding:20px 40px;margin:10px 0;border-radius:12px;cursor:pointer;display:block;margin-left:125px;border:3px solid rgba(0,0,0,0.3)}.stats{margin-top:40px;font-size:1.2em;font-style:italic}</style></head><body><div id="app"><div class="container" :style="{backgroundColor:bgColor,backgroundImage:bgImage,color:textColor}"><h1 class="song-title">{{songName}}</h1><audio ref="player" :src="songUrl" controls autoplay @ended="nextSong"></audio><div class="section-title">M U $ I C</div><div class="controls"><button class="btn" :style="{backgroundColor:textColor,color:bgColor}" @click="togglePlay">Play/Pause</button><button class="btn" :style="{backgroundColor:textColor,color:bgColor}" @click="nextSong">NEXT &gt;&gt;</button></div><div class="section-title">R A D I O</div><div><audio ref="radioFip" src="https://direct.fipradio.fr/live/fip-midfi.mp3"></audio><button class="radio-btn" style="background-color:#2233FF;color:white" @click="toggleRadio('fip')">{{radios.fip?'⏸':'▶'}} FIP Radio</button></div><div><audio ref="radioCulture" src="https://direct.franceculture.fr/live/franceculture-midfi.mp3"></audio><button class="radio-btn" style="background-color:#F32;color:white" @click="toggleRadio('culture')">{{radios.culture?'⏸':'▶'}} France Culture</button></div><div class="stats"><p><p style="color:black">cé mizik an nou ki pli bel ®</p></div></div></div><script>const{createApp}=Vue;createApp({data(){return{songName:'',songUrl:'',bgColor:'#000',textColor:'#FFF',bgImage:'',radios:{fip:false,culture:false},stats:{totalHits:0,sessionPlayed:0,totalSongs:0}}},async mounted(){await this.loadStats();await this.nextSong();await this.incrementHits()},methods:{async nextSong(){try{const r=await axios.get('https://musica.zapto.org/api/next-song',{withCredentials:true});this.songName=r.data.songName;this.songUrl=r.data.url;this.bgColor=r.data.color;this.textColor=r.data.textColor;this.bgImage=`url('${r.data.cover}')`;setTimeout(()=>this.$refs.player.play(),100);await this.loadStats()}catch(e){console.error(e)}},togglePlay(){const p=this.$refs.player;p.paused?p.play():p.pause()},toggleRadio(n){const refs={fip:'radioFip',culture:'radioCulture'};const p=this.$refs[refs[n]];if(p.paused){p.play();this.radios[n]=true}else{p.pause();this.radios[n]=false}},async loadStats(){try{const r=await axios.get('https://musica.zapto.org/api/stats',{withCredentials:true});this.stats=r.data}catch(e){}},async incrementHits(){try{await axios.post('https://musica.zapto.org/api/increment-hits',{},{withCredentials:true})}catch(e){}}}}).mount('#app')</script></body></html>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Musica</title>
+    <script src="https://unpkg.com/vue@3"></script>
+    <script src="https://unpkg.com/axios"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Lucida Sans', sans-serif; }
+        .container {
+            min-height: 100vh;
+            padding: 20px;
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+        }
+        .song-title {
+            font-size: 4em;
+            margin: 20px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+            max-width: 80%;
+            word-wrap: break-word;
+        }
+        audio {
+            width: 100%;
+            max-width: 1200px;
+            height: 100px;
+            margin-top: 20px;
+        }
+        .controls {
+            margin-top: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+        }
 
+        /* --- STYLES POUR LES BOUTONS RONDS (PLAY/PAUSE, NEXT) --- */
+        .btn {
+            width: 80px;
+            height: 80px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 50%;
+            margin: 15px;
+            border: 4px solid;
+            border-color: inherit; /* Prend la couleur du texte, s'adapte dynamiquement */
+            font-size: 32px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+        .btn:hover {
+            transform: scale(1.1);
+            filter: brightness(1.2);
+        }
+        /* --- FIN DES STYLES POUR .btn --- */
+
+        .section-title {
+            font-size: 2.5em;
+            margin: 40px 0 20px;
+            width: 100%;
+        }
+
+        .radio-btn {
+            font-size: 2em;
+            padding: 20px 40px;
+            margin: 10px auto; /* Centre horizontalement */
+            border-radius: 12px;
+            cursor: pointer;
+            display: block;
+            border: 3px solid rgba(0,0,0,0.3);
+            max-width: 80%;
+        }
+
+        .stats {
+            margin-top: 40px;
+            font-size: 1.2em;
+            font-style: italic;
+            width: 100%;
+        }
+        .stats p {
+            color: black; /* Applique la couleur à la phrase */
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="container" :style="{backgroundColor:bgColor, backgroundImage:bgImage, color:textColor}">
+            <h1 class="song-title">{{songName}}</h1>
+            <!-- Audio pour les MP3s lus depuis l'API -->
+            <!-- 'controls' est inclus pour la barre de lecture par défaut -->
+            <!-- 'autoplay' a été retiré pour éviter les problèmes de lecture auto bloquée -->
+            <audio ref="player" :src="songUrl" controls @ended="nextSong"></audio>
+
+            <div class="section-title">M U $ I C</div>
+            <div class="controls">
+                <!-- Bouton Play/Pause qui affiche le symbole ▶ ou ⏸ -->
+                <button class="btn" :style="{backgroundColor:textColor,color:bgColor}" @click="togglePlay">
+                    {{ player.paused ? '▶' : '⏸' }}
+                </button>
+                
+                <!-- Bouton Next avec les chevrons -->
+                <button class="btn" :style="{backgroundColor:textColor,color:bgColor}" @click="nextSong">
+                    &gt;&gt;
+                </button>
+            </div>
+
+            <!-- Section Radio -->
+            <div class="section-title">R A D I O</div>
+            <div>
+                <audio ref="radioFip" src="https://direct.fipradio.fr/live/fip-midfi.mp3"></audio>
+                <button class="radio-btn" style="background-color:#2233FF;color:white" @click="toggleRadio('fip')">{{radios.fip?'⏸':'▶'}} FIP Radio</button>
+            </div>
+            <div>
+                <audio ref="radioCulture" src="https://direct.franceculture.fr/live/franceculture-midfi.mp3"></audio>
+                <button class="radio-btn" style="background-color:#F32;color:white" @click="toggleRadio('culture')">{{radios.culture?'⏸':'▶'}} France Culture</button>
+            </div>
+
+            <!-- Section Stats (uniquement la phrase) -->
+            <div class="stats">
+                <p>cé mizik an nou ki pli bel ®</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+        createApp({
+            data() {
+                return {
+                    songName: '',
+                    songUrl: '',
+                    bgColor: '#000',
+                    textColor: '#FFF',
+                    bgImage: '',
+                    // Propriété pour gérer l'état Play/Pause du lecteur
+                    player: {
+                        paused: true // Initialement, le lecteur est considéré comme en pause
+                    },
+                    // Radios actives
+                    radios: { fip: false, culture: false },
+                    // Statistiques globales (totalHits, totalSongs)
+                    stats: { totalHits: 0, sessionPlayed: 0, totalSongs: 0 }
+                };
+            },
+            async mounted() {
+                // Charge les statistiques globales (totalHits, totalSongs)
+                await this.loadStats();
+                // Charge les infos de la première chanson, mais ne la joue pas encore.
+                // La lecture sera déclenchée par le premier clic utilisateur sur Play/Pause.
+                await this.nextSong();
+            },
+            methods: {
+                async nextSong() {
+                    try {
+                        // Appel API pour obtenir les infos de la chanson depuis le backend
+                        const r = await axios.get('https://musica.zapto.org/api/next-song', { withCredentials: true });
+                        
+                        // Met à jour les données de la chanson
+                        this.songName = r.data.songName;
+                        this.songUrl = r.data.url; // URL absolue fournie par le backend
+                        this.bgColor = r.data.color;
+                        this.textColor = r.data.textColor;
+                        this.bgImage = `url('${r.data.cover}')`; // URL absolue fournie par le backend
+
+                        // Réinitialise l'état du joueur pour afficher le bouton '▶'
+                        this.player.paused = true; 
+                        
+                        // Recharge les statistiques (notamment pour totalHits s'il est géré par fichier)
+                        await this.loadStats();
+
+                    } catch (e) {
+                        console.error("Erreur lors du chargement de la prochaine chanson:", e);
+                        alert("Impossible de charger la prochaine chanson. Veuillez réessayer.");
+                    }
+                },
+                
+                // Gère le clic sur le bouton Play/Pause
+                togglePlay() {
+                    const p = this.$refs.player; // Récupère l'élément audio
+
+                    // Condition pour gérer la toute première lecture (nécessaire pour les navigateurs)
+                    if (this.player.paused) { // Si actuellement en pause (ou première lecture)
+                        p.play()
+                         .then(() => {
+                             // La lecture a commencé avec succès
+                             this.player.paused = false; // Met à jour l'état pour afficher '⏸'
+                             // Incrémente les hits globaux (totalHits) SEULEMENT si la lecture démarre
+                             this.incrementHits(); 
+                         })
+                         .catch(e => {
+                             // Erreur lors de la lecture (ex: blocage par le navigateur, audio non supporté)
+                             console.error("Erreur lors de la lecture de la chanson:", e);
+                             alert("Lecture audio non autorisée ou erreur de lecture. Essayez d'abord de cliquer sur Play.");
+                         });
+                    } else { // Si actuellement en lecture
+                        p.pause(); // Met en pause
+                        this.player.paused = true; // Met à jour l'état pour afficher '▶'
+                    }
+                },
+                
+                // Gère le clic sur le bouton Next
+                nextSong() {
+                    this.nextSong(); // Appelle la méthode de chargement de la prochaine chanson
+                },
+
+                // Gère les radios
+                toggleRadio(n) {
+                    const refs = { fip: 'radioFip', culture: 'radioCulture' };
+                    const p = this.$refs[refs[n]]; // Récupère l'élément audio de la radio
+
+                    if (p.paused) {
+                        // Essaie de jouer la radio
+                        p.play().then(() => {
+                            this.radios[n] = true; // Met à jour l'état pour afficher '⏸'
+                        }).catch(e => {
+                            console.error(`Erreur lors de la lecture de la radio ${n}:`, e);
+                            alert(`Impossible de lire la radio ${n}.`);
+                        });
+                    } else {
+                        p.pause(); // Met en pause
+                        this.radios[n] = false; // Met à jour l'état pour afficher '▶'
+                    }
+                },
+
+                // Charge les statistiques globales (totalHits, totalSongs) depuis l'API
+                async loadStats() {
+                    try {
+                        const r = await axios.get('https://musica.zapto.org/api/stats', { withCredentials: true });
+                        this.stats.totalHits = r.data.totalHits;
+                        this.stats.totalSongs = r.data.totalSongs;
+                        // Ne pas écraser sessionPlayed s'il est toujours 0
+                        // this.stats.sessionPlayed = r.data.sessionPlayed; 
+                    } catch (e) {
+                        console.error("Erreur lors du chargement des stats:", e);
+                        // Si erreur, les stats restent à leurs valeurs initiales (0, 0, etc.)
+                    }
+                },
+
+                // Incrémente le compteur global de clics (totalHits) via l'API
+                async incrementHits() {
+                    try {
+                        await axios.post('https://musica.zapto.org/api/increment-hits', {}, { withCredentials: true });
+                        // Après avoir incrémenté, recharge les stats pour afficher le nouveau totalHits
+                        await this.loadStats();
+                    } catch (e) {
+                        console.error("Erreur lors de l'incrémentation des hits:", e);
+                    }
+                }
+            }
+        }).mount('#app')
+    </script>
+</body>
+</html>

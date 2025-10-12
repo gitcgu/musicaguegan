@@ -169,13 +169,12 @@ createApp({
                 this.textColor = r.data.textColor;
                 
                 // Correction de l'URL de cover si elle se termine par .mp3.jpg
+       //         if (r.data.cover && typeof r.data.cover === 'string') {
                 if (r.data.cover && typeof r.data.cover === 'string') {
-                    if (r.data.cover.endsWith('.mp3.jpg')) {
-                        this.bgImage = `url('${r.data.cover.replace('.mp3.jpg', '.jpg')}')`;
+               //     if (r.data.cover.endsWith('.mp3.jpg')) {
+                        // this.bgImage = `url('${r.data.cover.replace('.mp3.jpg', '.jpg')}')`;
+                        this.bgImage = `url('${r.data.cover}')`; // Utilise directement l'URL reçue
                     } else {
-                        this.bgImage = `url('${r.data.cover}')`;
-                    }
-                } else {
                     this.bgImage = '';
                 }
                 console.log("songUrl mise à jour à :", this.songUrl);

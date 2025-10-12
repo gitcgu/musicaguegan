@@ -131,158 +131,154 @@
     </div>
 
     <script>
-        const { createApp } = Vue;
-        createApp({
-            data() {
-                return {
-                    songName: '',
-                    songUrl: '', // URL de la chanson venant de l'API
-                    bgColor: '#000',
-                    textColor: '#FFF',
-                    bgImage: '',
-                    player: {
-                        paused: true // État pour le bouton Play/Pause
-                    },
-                    radios: { fip: false, culture: false },
-                    stats: { totalHits: 0, sessionPlayed: 0, totalSongs: 0 }
-                };
+       const { createApp } = Vue;
+createApp({
+    data() {
+        return {
+            songName: '',
+            songUrl: '', // URL de la chanson venant de l'API
+            bgColor: '#000',
+            textColor: '#FFF',
+            bgImage: '',
+            player: {
+                paused: true // État pour le bouton Play/Pause
             },
-            async mounted() {
-                console.log("Composant monté. Chargement des stats et de la première chanson...");
-                await this.loadStats();
-                await this.nextSong(); // Charge les infos et l'URL de la première chanson
-                console.log("Première chanson chargée. songUrl =", this.songUrl);
-            },
-            methods: {
-                // Méthode pour charger la prochaine chanson
-                async nextSong() {
-                    console.log("Appel à nextSong...");
-                    try {
-                        const r = await axios.get('https://musica.zapto.org/api/next-song', { withCredentials: true });
-                        console.log("Réponse API next-song:", r.data);
-                        console.log("URL de la chanson reçue :", r.data.url);
-                        console.log("URL de la cover reçue :", r.data.cover);
-
-                        this.songName = r.data.songName;
-                        this.songUrl = r.data.url; 
-                        this.bgColor = r.data.color;
-                        this.textColor = r.data.textColor;
-                        
-                        // Correction de l'URL de cover si elle se termine par .mp3.jpg
-                        if (r.data.cover && typeof r.data.cover === 'string') { // Vérifie si cover existe et est une chaîne
-                            if (r.data.cover.endsWith('.mp3.jpg')) {
-                                this.bgImage = `url('${r.data.cover.replace('.mp3.jpg', '.jpg')}')`;
-                            } else {
-                                this.bgImage = `url('${r.data.cover}')`;
-                            }
-                        } else {
-                            this.bgImage = ''; // Pas de cover, fond vide
-                        }
-                        console.log("bgImage configuré à :", this.bgImage);
-
-                        // Vérification essentielle: Si songUrl est vide après avoir reçu les données, on alerte et on arrête.
-                        if (!this.songUrl) {
-                            console.error("L'URL de la chanson est vide après l'appel API.");
-                            alert("Aucune chanson chargée. Cliquez sur Next pour en charger une.");
-                            // Important: Arrêter ici si pas d'URL pour éviter les erreurs suivantes
-                            return; 
-                        }
-
-                        // Réinitialise l'état du joueur pour afficher '▶'
-                        this.player.paused = true; 
-                        // Ne pas essayer de jouer automatiquement ici, laissez togglePlay gérer ça
-                        
-                        await this.loadStats();
-
-                    } catch (e) {
-                        console.error("Erreur lors du chargement de la prochaine chanson:", e);
-                        alert("Impossible de charger la prochaine chanson. Veuillez réessayer.");
-                    }
-                },
+            radios: { fip: false, culture: false },
+            stats: { totalHits: 0, sessionPlayed: 0, totalSongs: 0 }
+        };
+    },
+    async mounted() {
+        console.log("Composant monté. Chargement des stats et de la première chanson...");
+        await this.loadStats();
+        // Charge la première chanson, mais ne la joue pas encore.
+        // La lecture sera déclenchée par le premier clic utilisateur sur Play/Pause.
+        await this.nextSong(); 
+        console.log("Première chanson chargée. songUrl =", this.songUrl);
+    },
+    methods: {
+        // Méthode pour charger la prochaine chanson
+        async nextSong() {
+            console.log("Appel à nextSong pour charger une NOUVELLE chanson...");
+            try {
+                const r = await axios.get('https://musica.zapto.org/api/next-song', { withCredentials: true });
+                console.log("Réponse API next-song:", r.data);
                 
-                // Gère le clic sur le bouton Play/Pause
-                togglePlay() {
-                    const p = this.$refs.player;
-
-                    // On ne fait rien si songUrl est vide pour éviter les erreurs
-                    if (!this.songUrl) {
-                        console.warn("songUrl est vide, on ne peut pas jouer.");
-                        alert("Aucune chanson chargée. Cliquez sur Next pour en charger une.");
-                        return;
-                    }
-
-                    console.log("Clic sur togglePlay. État actuel 'paused':", this.player.paused);
-
-                    if (this.player.paused) { // Si actuellement en pause
-                        console.log("Tentative de lecture...");
-                        p.play()
-                         .then(() => {
-                             console.log("Lecture démarrée avec succès.");
-                             this.player.paused = false; // Met à jour l'état pour afficher '⏸'
-                             // Incrémente les hits globaux (totalHits) SEULEMENT si la lecture démarre
-                             this.incrementHits(); 
-                         })
-                         .catch(e => {
-                             console.error("Erreur lors de la lecture de la chanson:", e);
-                             // Message d'erreur plus spécifique
-                             if (e.name === "NotSupportedError" || e.message.includes("no supported sources")) {
-                                 alert("Erreur de format audio ou fichier introuvable. Vérifiez que l'URL de la chanson est correcte et que le fichier est lisible.");
-                             } else {
-                                 alert("Lecture audio non autorisée ou erreur de lecture. Essayez d'abord de cliquer sur Play.");
-                             }
-                         });
-                    } else { // Si actuellement en lecture
-                        console.log("Mise en pause...");
-                        p.pause(); // Met en pause
-                        this.player.paused = true; // Met à jour l'état pour afficher '▶'
-                    }
-                },
+                this.songName = r.data.songName;
+                this.songUrl = r.data.url; 
+                this.bgColor = r.data.color;
+                this.textColor = r.data.textColor;
                 
-                // Le bouton Next appelle simplement nextSong
-                nextSong() {
-                    this.nextSong(); 
-                },
-
-                // Gère les radios
-                toggleRadio(n) {
-                    const refs = { fip: 'radioFip', culture: 'radioCulture' };
-                    const p = this.$refs[refs[n]];
-
-                    if (p.paused) {
-                        p.play().then(() => {
-                            this.radios[n] = true;
-                        }).catch(e => {
-                            console.error(`Erreur lors de la lecture de la radio ${n}:`, e);
-                            alert(`Impossible de lire la radio ${n}.`);
-                        });
+                // Correction de l'URL de cover si elle se termine par .mp3.jpg
+                if (r.data.cover && typeof r.data.cover === 'string') {
+                    if (r.data.cover.endsWith('.mp3.jpg')) {
+                        this.bgImage = `url('${r.data.cover.replace('.mp3.jpg', '.jpg')}')`;
                     } else {
-                        p.pause();
-                        this.radios[n] = false;
+                        this.bgImage = `url('${r.data.cover}')`;
                     }
-                },
-
-                // Charge les statistiques globales (totalHits, totalSongs)
-                async loadStats() {
-                    try {
-                        const r = await axios.get('https://musica.zapto.org/api/stats', { withCredentials: true });
-                        this.stats.totalHits = r.data.totalHits;
-                        this.stats.totalSongs = r.data.totalSongs;
-                        // Ne modifie pas sessionPlayed ici, car cela dépend du bon fonctionnement de la session.
-                    } catch (e) {
-                        console.error("Erreur lors du chargement des stats:", e);
-                    }
-                },
-
-                // Incrémente le compteur global de clics (totalHits) via l'API
-                async incrementHits() {
-                    try {
-                        await axios.post('https://musica.zapto.org/api/increment-hits', {}, { withCredentials: true });
-                        await this.loadStats(); // Recharge pour mettre à jour l'affichage de totalHits
-                    } catch (e) {
-                        console.error("Erreur lors de l'incrémentation des hits:", e);
-                    }
+                } else {
+                    this.bgImage = '';
                 }
+                console.log("songUrl mise à jour à :", this.songUrl);
+                console.log("bgImage configuré à :", this.bgImage);
+
+                // Assure que le lecteur est en pause pour que le bouton Play s'affiche
+                this.player.paused = true; 
+                
+                await this.loadStats();
+
+            } catch (e) {
+                console.error("Erreur dans nextSong lors du chargement:", e);
+                alert("Impossible de charger la prochaine chanson. Veuillez réessayer.");
             }
-        }).mount('#app')
+        },
+        
+        // Gère le clic sur le bouton Play/Pause
+        togglePlay() {
+            const p = this.$refs.player;
+
+            if (!this.songUrl) {
+                console.warn("songUrl est vide, on ne peut pas jouer.");
+                alert("Aucune chanson chargée. Cliquez sur Next pour en charger une.");
+                return;
+            }
+
+            console.log("Clic sur togglePlay. État actuel 'paused':", this.player.paused);
+
+            if (this.player.paused) { // Si actuellement en pause
+                console.log("Tentative de lecture...");
+                p.play()
+                 .then(() => {
+                     console.log("Lecture démarrée avec succès.");
+                     this.player.paused = false; // Met à jour l'état pour afficher '⏸'
+                     this.incrementHits(); 
+                 })
+                 .catch(e => {
+                     console.error("Erreur lors de la lecture de la chanson:", e);
+                     if (e.name === "NotSupportedError" || e.message.includes("no supported sources")) {
+                         alert("Erreur de format audio ou fichier introuvable. Vérifiez que l'URL de la chanson est correcte et que le fichier est lisible.");
+                     } else {
+                         alert("Lecture audio non autorisée ou erreur de lecture. Essayez d'abord de cliquer sur Play.");
+                     }
+                 });
+            } else { // Si actuellement en lecture
+                console.log("Mise en pause...");
+                p.pause();
+                this.player.paused = true; // Met à jour l'état pour afficher '▶'
+            }
+        },
+        
+        // La méthode appelée par le bouton Next
+        handleNextClick() {
+            console.log("Clic sur le bouton NEXT.");
+            this.nextSong(); // Appelle la méthode pour charger la chanson suivante
+        },
+
+        // La méthode appelée quand la chanson actuelle se termine (événement @ended)
+        handleSongEnd() {
+            console.log("La chanson actuelle s'est terminée.");
+            // On appelle nextSong pour charger la suivante automatiquement
+            this.nextSong(); 
+        },
+
+        // Gère les radios
+        toggleRadio(n) {
+            const refs = { fip: 'radioFip', culture: 'radioCulture' };
+            const p = this.$refs[refs[n]];
+
+            if (p.paused) {
+                p.play().then(() => {
+                    this.radios[n] = true;
+                }).catch(e => {
+                    console.error(`Erreur lors de la lecture de la radio ${n}:`, e);
+                    alert(`Impossible de lire la radio ${n}.`);
+                });
+            } else {
+                p.pause();
+                this.radios[n] = false;
+            }
+        },
+
+        // Charge les statistiques globales (totalHits, totalSongs)
+        async loadStats() {
+            try {
+                const r = await axios.get('https://musica.zapto.org/api/stats', { withCredentials: true });
+                this.stats.totalHits = r.data.totalHits;
+                this.stats.totalSongs = r.data.totalSongs;
+            } catch (e) {
+                console.error("Erreur lors du chargement des stats:", e);
+            }
+        },
+
+        // Incrémente le compteur global de clics (totalHits) via l'API
+        async incrementHits() {
+            try {
+                await axios.post('https://musica.zapto.org/api/increment-hits', {}, { withCredentials: true });
+                await this.loadStats(); // Recharge pour mettre à jour l'affichage de totalHits
+            } catch (e) {
+                console.error("Erreur lors de l'incrémentation des hits:", e);
+            }
+        }
+    }
+}).mount('#app')
     </script>
 </html>

@@ -6,6 +6,7 @@
     <script src="https://unpkg.com/vue@3"></script>
     <script src="https://unpkg.com/axios"></script>
     <style>
+        /* ... (vos styles CSS existants, y compris pour .btn) ... */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Lucida Sans', sans-serif; }
         .container {
@@ -39,58 +40,14 @@
             align-items: center;
             flex-wrap: wrap;
         }
-
-        /* --- STYLES POUR LES BOUTONS RONDS (PLAY/PAUSE, NEXT, PREV, REPLAY) --- */
         .btn {
-            /* TAILLE DES BOUTONS MODIFIÉE COMME DEMANDÉ */
-            width: 160px;  /* Largeur augmentée */
-            height: 160px; /* Hauteur augmentée */
-            
-            display: flex;
-            justify-content: center; /* Centre le symbole horizontalement */
-            align-items: center;     /* Centre le symbole verticalement */
-            border-radius: 50%; /* Rond */
-            margin: 20px;  /* Espacement autour (augmenté) */
-            border: 5px solid; /* Épaisseur de la bordure augmentée */
-            border-color: inherit; /* Prend la couleur du texte, s'adapte dynamiquement */
-            font-size: 64px;   /* Taille du symbole augmentée */
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease; /* Effet de transition doux */
-            text-align: center;
+            width: 160px; height: 160px; display: flex; justify-content: center; align-items: center; border-radius: 50%; margin: 20px; border: 5px solid; border-color: inherit; font-size: 64px; font-weight: bold; cursor: pointer; transition: all 0.3s ease; text-align: center;
         }
-        .btn:hover {
-            transform: scale(1.1);
-            filter: brightness(1.2);
-        }
-        /* --- FIN DES STYLES POUR .btn --- */
-
-        .section-title {
-            font-size: 2.5em;
-            margin: 40px 0 20px;
-            width: 100%;
-        }
-
-        .radio-btn {
-            font-size: 2em;
-            padding: 20px 40px;
-            margin: 10px auto; /* Centre horizontalement  */
-            border-radius: 12px;
-            cursor: pointer;
-            display: block;
-            border: 3px solid rgba(0,0,0,0.3);
-            max-width: 80%;
-        }
-
-        .stats {
-            margin-top: 40px;
-            font-size: 1.2em;
-            font-style: italic;
-            width: 100%;
-        }
-        .stats p {
-            color: black; /* Applique la couleur à la phrase */
-        }
+        .btn:hover { transform: scale(1.1); filter: brightness(1.2); }
+        .section-title { font-size: 2.5em; margin: 40px 0 20px; width: 100%; }
+        .radio-btn { font-size: 2em; padding: 20px 40px; margin: 10px auto; border-radius: 12px; cursor: pointer; display: block; border: 3px solid rgba(0,0,0,0.3); max-width: 80%; }
+        .stats { margin-top: 40px; font-size: 1.2em; font-style: italic; width: 100%; }
+        .stats p { color: black; }
     </style>
 </head>
 <body>
@@ -172,43 +129,44 @@
                     try {
                         const r = await axios.get('https://musica.zapto.org/api/next-song', { withCredentials: true });
                         console.log("Réponse API next-song:", r.data);
-                        console.log("URL de la chanson reçue :", r.data.url);
+                        console.log("URL de la chanson reçue :", r.data.url); // Log pour vérifier l'URL du MP3
                         console.log("URL de la cover reçue :", r.data.cover); // Log pour vérifier l'URL de la cover
 
                         this.songName = r.data.songName;
-                        this.songUrl = r.data.url; 
+                        this.songUrl = r.data.url; // Assignation de l'URL du MP3
                         this.bgColor = r.data.color;
                         this.textColor = r.data.textColor;
                         
                         // --- UTILISATION DIRECTE DE L'URL DE COVER ---
-                        // On utilise l'URL de cover telle qu'elle est renvoyée par le backend, sans modification d'extension.
+                        // On utilise l'URL de cover telle qu'elle est renvoyée par le backend, sans modifier l'extension.
                         if (r.data.cover && typeof r.data.cover === 'string') {
-                            this.bgImage = `url('${r.data.cover}')`; // Utilise directement l'URL reçue
+                            this.bgImage = `url('${r.data.cover}')`; 
                         } else {
                             this.bgImage = ''; // Pas de cover, fond vide
                         }
                         console.log("bgImage configuré à :", this.bgImage);
 
+                        // Si songUrl est vide après réception des données, on alerte et on arrête
                         if (!this.songUrl) {
                             console.error("L'URL de la chanson est vide après l'appel API.");
                             alert("Aucune chanson chargée. Cliquez sur Next pour en charger une.");
-                            return;
+                            return; 
                         }
 
                         // --- GESTION DE L'HISTORIQUE ---
                         if (this.songUrl) {
-                            this.playbackHistory.push(this.songUrl);
-                            if (this.playbackHistory.length > 20) { // Limite l'historique
+                            thisthis.playbackHistory.push(this.songUrl); // Ajoute la nouvelle URL à l'historique
+                            if (this.playbackHistory.length > 20) { // Maintient l'historique limité
                                 this.playbackHistory.shift();
                             }
-                            this.currentHistoryIndex = this.playbackHistory.length - 1;
-                            this.savePlaybackHistory();
+                            this.currentHistoryIndex = this.playbackHistory.length - 1; // Met à jour l'index
+                            this.savePlaybackHistory(); // Sauvegarde dans localStorage
                             console.log("Historique mis à jour et sauvegardé :", this.playbackHistory);
                         }
                         // --- FIN GESTION HISTORIQUE ---
 
-                        this.player.paused = true; // Assure que le bouton affiche '▶'
-                        if (increment) {
+                        this.player.paused = true; // Assure que le bouton affiche '▶' pour la nouvelle chanson
+                        if (increment) { // Incrémente les hits seulement si c'est une vraie "next"
                             await this.loadStats();
                         }
 
@@ -226,6 +184,7 @@
                 togglePlay() {
                     const p = this.$refs.player;
 
+                    // Vérifie si songUrl est définie avant de tenter de jouer
                     if (!this.songUrl) {
                         console.warn("songUrl est vide, on ne peut pas jouer.");
                         alert("Aucune chanson chargée. Cliquez sur Next pour en charger une.");
@@ -251,13 +210,13 @@
                              }
                          });
                     } else { // Si actuellement en lecture
-                        console.console.log("Mise en pause...");
+                        console.log("Mise en pause...");
                         p.pause(); // Met en pause
                         this.player.paused = true; // Met à jour l'état pour afficher '▶'
                     }
                 },
                 
-                // Gère le clic sur le bouton Next (appeler nextSong pour charger une NOUVELLE chanson)
+                // Gère le clic sur le bouton Next (appelle nextSong pour charger une NOUVELLE chanson)
                 handleNextClick() {
                     console.log("Clic sur le bouton NEXT.");
                     this.nextSong(true); // true pour incrémenter les hits
@@ -287,6 +246,7 @@
                 // Gère le clic sur le bouton Précédent ( << )
                 previousSong() {
                     console.log("Clic sur le bouton PRECEDENT.");
+                    // Vérifie s'il y a une chanson précédente dans l'historique (index > 0)
                     if (this.currentHistoryIndex > 0) {
                         this.currentHistoryIndex--; // Recule l'index
                         const previousUrl = this.playbackHistory[this.currentHistoryIndex];

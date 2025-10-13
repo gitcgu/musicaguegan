@@ -42,26 +42,24 @@
 
         /* --- STYLES POUR LES BOUTONS RONDS (PLAY/PAUSE, NEXT, PREV, REPLAY) --- */
         .btn {
-            /* TAILLE DES BOUTONS MODIFIÉE COMME DEMANDÉ */
-            width: 160px;  /* Largeur augmentée */
-            height: 160px; /* Hauteur augmentée */
-            
+            width: 160px;
+            height: 160px;
             display: flex;
-            justify-content: center; /* Centre le symbole horizontalement */
-            align-items: center;     /* Centre le symbole verticalement */
-            border-radius: 50%; /* Rond */
-            margin: 20px;  /* Espacement autour (augmenté) */
-            border: 5px solid; /* Épaisseur de la bordure augmentée */
-            border-color: inherit; /* Prend la couleur du texte, s'adapte dynamiquement */
-            font-size: 64px;   /* Taille du symbole augmentée */
+            justify-content: center;
+            align-items: center;
+            border-radius: 50%;
+            margin: 20px;
+            border: 5px solid;
+            border-color: inherit;
+            font-size: 64px;
             font-weight: bold;
             cursor: pointer;
-            transition: all 0.3s ease; /* Effet de transition doux */
+            transition: all 0.3s ease;
             text-align: center;
         }
         .btn:hover {
-            transform: scale(1.1); /* Légèrement plus grand */
-            filter: brightness(1.2); /* Plus lumineux */
+            transform: scale(1.1);
+            filter: brightness(1.2);
         }
         /* --- FIN DES STYLES POUR .btn --- */
 
@@ -74,7 +72,7 @@
         .radio-btn {
             font-size: 2em;
             padding: 20px 40px;
-            margin: 10px auto; /* Centre horizontalement */
+            margin: 10px auto;
             border-radius: 12px;
             cursor: pointer;
             display: block;
@@ -89,7 +87,7 @@
             width: 100%;
         }
         .stats p {
-            color: black; /* Applique la couleur à la phrase */
+            color: black;
         }
     </style>
 </head>
@@ -97,7 +95,6 @@
     <div id="app">
         <div class="container" :style="{backgroundColor:bgColor, backgroundImage:bgImage, color:textColor}">
             <h1 class="song-title">{{songName}}</h1>
-            <!-- Le lecteur audio principal -->
             <audio ref="player" :src="songUrl" controls @ended="handleSongEnd"></audio>
 
             <div class="section-title">M U $ I C</div>
@@ -155,26 +152,27 @@
                     stats: { totalHits: 0, sessionPlayed: 0, totalSongs: 0 },
 
                     // --- HISTORIQUE DE LECTURE ---
-                    // Stocke des objets { name: 'Nom de la chanson', url: 'URL de la chanson' }
-                    playbackHistory: [],
-                    currentHistoryIndex: -1
+                    playbackHistory: [], // Stocke { name: 'Nom', url: 'URL' }
+                    currentHistoryIndex: -1, // Index de la chanson ACTUELLEMENT jouée dans playbackHistory
+                    isNavigatingHistory: false // Pour savoir si on est en mode "parcours historique" ou "nouvelle chanson API"
                 };
             },
             async mounted() {
                 console.log("Composant monté. Chargement des stats, historique et première chanson...");
                 await this.loadStats();
                 this.loadPlaybackHistory(); // Charge l'historique depuis localStorage
-                await this.nextSong(false); // Charge la première chanson
-                console.log("Première chanson chargée. songUrl =", this.songUrl);
+                // Charge la première chanson depuis l'API, mais la met en attente
+                await this.fetchNextSongFromAPI(false); 
+                console.log("Première chanson API chargée en attente. songUrl =", this.songUrl);
             },
             methods: {
-                // Méthode pour charger la prochaine chanson depuis l'API
-                async nextSong(increment = true) {
-                    console.log("Appel à nextSong pour charger une NOUVELLE chanson...");
+                // --- GESTION DE L'API POUR UNE NOUVELLE CHANSON ---
+                async fetchNextSongFromAPI(increment = true) {
+                    console.log("Appel à fetchNextSongFromAPI pour charger une NOUVELLE chanson depuis l'API...");
                     try {
                         const r = await axios.get('https://musica.zapto.org/api/next-song', { withCredentials: true });
                         console.log("Réponse API next-song:", r.data);
-
+                        
                         const newSongData = {
                             name: r.data.songName,
                             url: r.data.url
@@ -184,7 +182,7 @@
                         this.songUrl = newSongData.url;
                         this.bgColor = r.data.color;
                         this.textColor = r.data.textColor;
-
+                        
                         if (r.data.cover && typeof r.data.cover === 'string') {
                             this.bgImage = `url('${r.data.cover}')`;
                         } else {
@@ -195,39 +193,39 @@
                         if (!this.songUrl) {
                             console.error("L'URL de la chanson est vide après l'appel API.");
                             alert("Aucune chanson chargée. Cliquez sur Next pour en charger une.");
-                            return;
+                            return; 
                         }
 
-                        // --- GESTION DE L'HISTORIQUE ---
-                        // Vérifie si la chanson n'est pas déjà la dernière dans l'historique
+                        // --- GESTION DE L'HISTORIQUE QUAND ON JOUE UNE NOUVELLE CHANSON API ---
+                        // On ajoute cette nouvelle chanson à l'historique, seulement si ce n'est pas la même que la dernière ajoutée
                         if (this.playbackHistory.length === 0 || this.playbackHistory[this.playbackHistory.length - 1].url !== this.songUrl) {
                             this.playbackHistory.push(newSongData);
                             if (this.playbackHistory.length > 20) {
-                                this.playbackHistory.shift();
+                                this.playbackHistory.shift(); // Garde max 20 chansons
                             }
-                            this.currentHistoryIndex = this.playbackHistory.length - 1;
-                            this.savePlaybackHistory(); // <-- Appel à la méthode de sauvegarde
-                            console.log("Historique mis à jour et sauvegardé :", this.playbackHistory);
+                            this.currentHistoryIndex = this.playbackHistory.length - 1; // Le nouvel index est le dernier élément ajouté
+                            this.savePlaybackHistory(); // Sauvegarde l'historique
+                            console.log("Nouvelle chanson API ajoutée à l'historique. Historique:", this.playbackHistory);
                         } else {
-                            console.log("La chanson est déjà la dernière de l'historique, pas d'ajout.");
+                            console.log("La chanson API est déjà la dernière de l'historique, pas d'ajout.");
+                            // Si c'est la même, on avance juste l'index pour refléter qu'on est sur cette chanson
+                            this.currentHistoryIndex = this.playbackHistory.length - 1;
                         }
                         // --- FIN GESTION HISTORIQUE ---
 
-                        this.player.paused = true;
+                        this.player.paused = true; // Toujours en pause quand une nouvelle chanson est chargée
+                        this.isNavigatingHistory = false; // On n'est plus en mode navigation historique
+                        
                         if (increment) {
                             await this.loadStats();
                         }
 
                     } catch (e) {
-                        console.error("Erreur dans nextSong lors du chargement:", e);
-                        if (e.name === "NotSupportedError" || e.message.includes("no supported sources")) {
-                            alert("Erreur de format audio ou fichier introuvable. Vérifiez que l'URL de la chanson est correcte et que le fichier est lisible.");
-                        } else {
-                            alert("Impossible de charger la prochaine chanson. Veuillez réessayer.");
-                        }
+                        console.error("Erreur dans fetchNextSongFromAPI lors du chargement:", e);
+                        alert("Impossible de charger une nouvelle chanson depuis l'API. Vérifiez votre connexion.");
                     }
                 },
-
+                
                 // Gère le clic sur le bouton Play/Pause
                 togglePlay() {
                     const p = this.$refs.player;
@@ -240,57 +238,70 @@
 
                     console.log("Clic sur togglePlay. État actuel 'paused':", this.player.paused);
 
-                    if (this.player.paused) {
+                    if (this.player.paused) { 
                         console.log("Tentative de lecture...");
                         p.play()
                          .then(() => {
                              console.log("Lecture démarrée avec succès.");
-                             this.player.paused = false;
-                             this.incrementHits();
+                             this.player.paused = false; 
+                             this.incrementHits(); 
                          })
                          .catch(e => {
                              console.error("Erreur lors de la lecture de la chanson:", e);
-                             if (e.name === "NotSupportedError" || e.message.includes("no supported sources")) {
-                                 alert("Erreur de format audio ou fichier introuvable. Vérifiez que la chanson est correcte et que le fichier est lisible.");
-                             } else {
-                                 alert("Lecture audio non autorisée ou erreur de lecture. Essayez d'abord de cliquer sur Play.");
-                             }
+                             alert("Lecture audio non autorisée ou erreur de lecture.");
                          });
-                    } else {
+                    } else { 
                         console.log("Mise en pause...");
                         p.pause();
                         this.player.paused = true;
                     }
                 },
-
-                // Gère le clic sur le bouton Next
+                
+                // Gère le clic sur le bouton Next (peut être nouvelle chanson API OU suivante dans l'historique)
                 handleNextClick() {
                     console.log("Clic sur le bouton NEXT.");
-                    this.nextSong(true);
+                    
+                    // Si on était en train de naviguer dans l'historique, on passe à la chanson suivante de l'historique
+                    if (this.isNavigatingHistory) {
+                        this.nextSongFromHistory();
+                    } else {
+                        // Sinon, on charge une toute nouvelle chanson depuis l'API
+                        this.fetchNextSongFromAPI(true); 
+                    }
                 },
 
                 // Gère l'événement @ended de l'audio (quand la chanson se termine)
                 handleSongEnd() {
                     console.log("La chanson actuelle s'est terminée.");
-                    this.nextSong(false); // Passe à la suivante sans incrémenter les hits
+                    // Si on était en mode navigation historique, on continue la séquence historique
+                    if (this.isNavigatingHistory) {
+                        this.nextSongFromHistory();
+                    } else {
+                        // Sinon, on charge une nouvelle chanson depuis l'API
+                        this.fetchNextSongFromAPI(false); // false car @ended ne doit pas incrémenter les stats
+                    }
                 },
 
-                // Méthode pour charger une chanson spécifique depuis l'historique
-                async loadSongFromHistory(index) {
-                    console.log("Chargement de la chanson depuis l'historique à l'index :", index);
-                    if (index >= 0 && index < this.playbackHistory.length) {
-                        const songData = this.playbackHistory[index];
+                // Méthode pour charger une chanson depuis l'historique par son index
+                async loadSongFromHistory(indexToLoad) {
+                    console.log("Chargement de la chanson depuis l'historique à l'index :", indexToLoad);
+                    if (indexToLoad >= 0 && indexToLoad < this.playbackHistory.length) {
+                        const songData = this.playbackHistory[indexToLoad];
                         this.songUrl = songData.url;
-                        this.songName = songData.name; // Nom de la chanson récupéré de l'historique
-                        this.bgColor = '#333'; // Couleur par défaut pour l'historique, ou pourrait être stockée
+                        this.songName = songData.name; 
+                        this.bgColor = '#333'; // Couleur par défaut pour l'historique
                         this.textColor = '#EEE';
                         this.bgImage = '';
 
                         this.player.paused = true; // Met en pause pour que le clic Play fonctionne
-                        console.log("Chanson de l'historique chargée:", this.songName, this.songUrl);
+                        this.currentHistoryIndex = indexToLoad; // Met à jour l'index courant
+                        this.isNavigatingHistory = true; // On est maintenant en mode navigation historique
+                        console.log("Chanson de l'historique chargée:", this.songName, this.songUrl, "Index:", this.currentHistoryIndex);
                     } else {
-                        console.log("Index d'historique invalide.");
-                        alert("Index d'historique invalide.");
+                        console.log("Index d'historique invalide ou hors limites.");
+                        // Si l'index est invalide, on peut soit charger une nouvelle chanson, soit ignorer.
+                        // Ici, on va ignorer pour le moment.
+                        alert("Aucune chanson trouvée à cet index.");
                     }
                 },
 
@@ -298,22 +309,35 @@
                 previousSong() {
                     console.log("Clic sur le bouton PRECEDENT.");
                     if (this.currentHistoryIndex > 0) {
-                        this.currentHistoryIndex--;
-                        this.loadSongFromHistory(this.currentHistoryIndex);
+                        // On décrémente l'index et on charge la chanson précédente de l'historique
+                        this.loadSongFromHistory(this.currentHistoryIndex - 1);
                     } else {
                         console.log("Pas de chanson précédente dans l'historique.");
                         alert("Pas de chanson précédente dans l'historique.");
                     }
                 },
 
-                // Gère le clic sur le bouton Rejouer ( ↻ )
+                // Gère la transition vers la chanson SUIVANTE DANS L'HISTORIQUE
+                nextSongFromHistory() {
+                    console.log("Passage à la chanson suivante DANS L'HISTORIQUE.");
+                    if (this.currentHistoryIndex < this.playbackHistory.length - 1) {
+                        // On incrémente l'index et on charge la chanson suivante de l'historique
+                        this.loadSongFromHistory(this.currentHistoryIndex + 1);
+                    } else {
+                        console.log("Fin de l'historique. Chargement d'une nouvelle chanson depuis l'API.");
+                        // Si on est à la fin de l'historique, on charge une nouvelle chanson depuis l'API
+                        this.fetchNextSongFromAPI(true); 
+                    }
+                },
+
+                 // Gère le clic sur le bouton Rejouer ( ↻ )
                 replaySong() {
                     const p = this.$refs.player;
-                    if (this.songUrl) {
+                    if (this.songUrl) { 
                         console.log("Rejouer la chanson actuelle.");
                         p.currentTime = 0; // Remet la lecture au début
                         p.play().then(() => {
-                            this.player.paused = false;
+                            this.player.paused = false; 
                         }).catch(e => {
                             console.error("Erreur lors de la relecture de la chanson:", e);
                              alert("Erreur lors de la relecture.");
@@ -353,11 +377,11 @@
                     }
                 },
 
-                // Incrémente le compteur global de clics (totalHits) via l API
+                // Incrémente le compteur global de clics (totalHits) via lAPI
                 async incrementHits() {
                     try {
                         await axios.post('https://musica.zapto.org/api/increment-hits', {}, { withCredentials: true });
-                        await this.loadStats();
+                        await this.loadStats(); 
                     } catch (e) {
                         console.error("Erreur lors de l'incrémentation des hits:", e);
                     }
@@ -366,7 +390,6 @@
                 // --- Méthodes pour gérer localStorage ---
                 savePlaybackHistory() {
                     try {
-                        // Sauvegarde l'historique en JSON
                         localStorage.setItem('musicagueganHistory', JSON.stringify(this.playbackHistory));
                         console.log("Historique sauvegardé dans localStorage :", this.playbackHistory);
                     } catch (e) {
@@ -377,21 +400,37 @@
                     try {
                         const history = localStorage.getItem('musicagueganHistory');
                         if (history) {
-                            // Charge l'historique et le parse en objet JavaScript
                             const parsedHistory = JSON.parse(history);
-                            // S'assure que l'historique contient bien des objets avec 'name' et 'url'
+                            // S'assurer que les données sont bien des objets { name, url }
                             this.playbackHistory = parsedHistory.filter(item => item && item.name && item.url);
-                            this.currentHistoryIndex = this.playbackHistory.length > 0 ? this.playbackHistory.length - 1 : -1;
-                            console.log("Historique chargé depuis localStorage :", this.playbackHistory);
+                            // Si l'historique a été chargé, l'index courant est le dernier élément de cet historique.
+                            // Note: Ceci suppose que le dernier élément de l'historique est la chanson qui était en cours de lecture
+                            // quand le navigateur a été fermé. Si on veut toujours commencer par une nouvelle chanson API à l'ouverture,
+                            // il faudrait initialiser currentHistoryIndex à -1 et isNavigatingHistory à false.
+                            // Pour l'instant, on restaure l'état de lecture potentiel.
+                            if (this.playbackHistory.length > 0) {
+                                this.currentHistoryIndex = this.playbackHistory.length - 1;
+                                // On charge la dernière chanson de l'historique pour que la navigation << >> ait un point de départ
+                                // Mais on ne la joue pas, on la laisse en pause.
+                                this.loadSongFromHistory(this.currentHistoryIndex);
+                                this.isNavigatingHistory = true; // On est en mode navigation historique dès le départ
+                                console.log("Historique chargé depuis localStorage. Index courant:", this.currentHistoryIndex);
+                            } else {
+                                console.log("Historique chargé mais vide.");
+                                this.currentHistoryIndex = -1;
+                                this.isNavigatingHistory = false;
+                            }
                         } else {
                             console.log("Aucun historique trouvé dans localStorage.");
                             this.playbackHistory = [];
                             this.currentHistoryIndex = -1;
+                            this.isNavigatingHistory = false;
                         }
                     } catch (e) {
                         console.error("Erreur lors du chargement de l'historique depuis localStorage:", e);
                         this.playbackHistory = [];
                         this.currentHistoryIndex = -1;
+                        this.isNavigatingHistory = false;
                     }
                 }
             }

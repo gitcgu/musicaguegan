@@ -2,6 +2,8 @@
 <html>
 <head>
     <meta charset="UTF-8">
+    <meta http-equiv="Permissions-Policy" content="interest-cohort=()">
+
     <title>Musica</title>
     <script src="https://unpkg.com/vue@3"></script>
     <script src="https://unpkg.com/axios"></script>
@@ -79,7 +81,22 @@
             border: 3px solid rgba(0,0,0,0.3);
             max-width: 80%;
         }
-
+        /* Style pour rendre le lien moins visible ou agir comme un bouton caché */
+        .hidden-button-link a {
+            color: #aaa; /* Couleur discrète */
+            text-decoration: none; /* Pas de soulignement */
+            font-size: 0.8em; /* Plus petit */
+            border: 1px solid #ccc; /* Bordure légère */
+            padding: 5px 10px;
+            display: inline-block;
+            margin: 10px;
+            opacity: 0.6;
+            transition: opacity 0.3s ease;
+        }
+        .hidden-button-link a:hover {
+            opacity: 1; /* Devient plus visible au survol */
+            color: #333;
+        }
         .stats {
             margin-top: 40px;
             font-size: 1.2em;
@@ -119,20 +136,28 @@
 
             <!-- Section Radio -->
             <div class="section-title">R A D I O</div>
-            <div>
-                <audio ref="radioFip" src="https://direct.fipradio.fr/live/fip-midfi.mp3"></audio>
-                <button class="radio-btn" style="background-color:#2233FF;color:white" @click="toggleRadio('fip')">{{radios.fip?'⏸':'▶'}} FIP Radio</button>
-            </div>
-            <div>
-                <audio ref="radioCulture" src="https://direct.franceculture.fr/live/franceculture-midfi.mp3"></audio>
-                <button class="radio-btn" style="background-color:#F32;color:white" @click="toggleRadio('culture')">{{radios.culture?'⏸':'▶'}} France Culture</button>
-            </div>
+<div>
+    <audio ref="radioFip" src="https://direct.fipradio.fr/live/fip-midfi.mp3"></audio>
+    <button class="btn" :style="{backgroundColor:textColor,color:bgColor,fontSize: '52px'}" @click="toggleRadio('fip')">
+        {{ radios.fip ? '⏸' : '▶' }} FIP 
+    </button>
+</div>
+<div>
+    <audio ref="radioCulture" src="https://direct.franceculture.fr/live/franceculture-midfi.mp3"></audio>
+    <button class="btn" :style="{backgroundColor:textColor,color:bgColor,fontSize: '35px'}" @click="toggleRadio('fc')">
+        {{ radios.fc ? '⏸' : '▶' }} France Culture
+    </button>
+</div>
 
+           <!-- C'est ici qu'on ajoute le lien vers la page protégée -->
+           <!-- On peut le styliser pour qu'il ressemble à un bouton "caché" -->
+          <div class="hidden-button-link">
+            <a href="/page-protegee">Accès fonction spéciale</a>
+          </div>
             <!-- Section Stats (uniquement la phrase) -->
-            <div class="stats">
+            <div>
                 <p>cé mizik an nou ki pli bel ®</p>
             </div>
-        </div>
     </div>
 
 <script>
@@ -146,10 +171,10 @@
                     textColor: '#FFF',
                     bgImage: '',
                     player: {
-                        paused: true
+                        paused: false
                     },
-                    radios: { fip: false, culture: false },
-                    stats: { totalHits: 0, sessionPlayed: 0, totalSongs: 0 },
+                    radios: { fip: false, fc: false },
+                    //stats: { totalHits: 0, sessionPlayed: 0, totalSongs: 0 },
 
                     // --- HISTORIQUE DE LECTURE ---
                     playbackHistory: [], // Stocke { name: 'Nom', url: 'URL' }
@@ -159,7 +184,7 @@
             },
             async mounted() {
                 console.log("Composant monté. Chargement des stats, historique et première chanson...");
-                await this.loadStats();
+                //await this.loadStats();
                 this.loadPlaybackHistory(); // Charge l'historique depuis localStorage
                 // Charge la première chanson depuis l'API, mais la met en attente
                 await this.fetchNextSongFromAPI(false); 
@@ -217,7 +242,8 @@
                         this.isNavigatingHistory = false; // On n'est plus en mode navigation historique
                         
                         if (increment) {
-                            await this.loadStats();
+                            console.log(" increment ");
+                           // await this.loadStats();
                         }
 
                     } catch (e) {
@@ -350,7 +376,7 @@
 
                 // Gère les radios
                 toggleRadio(n) {
-                    const refs = { fip: 'radioFip', culture: 'radioCulture' };
+                    const refs = { fip: 'radioFip', fc: 'radioCulture' };
                     const p = this.$refs[refs[n]];
 
                     if (p.paused) {
@@ -367,21 +393,21 @@
                 },
 
                 // Charge les statistiques globales (totalHits, totalSongs)
-                async loadStats() {
-                    try {
-                        const r = await axios.get('https://musica.zapto.org/api/stats', { withCredentials: true });
-                        this.stats.totalHits = r.data.totalHits;
-                        this.stats.totalSongs = r.data.totalSongs;
-                    } catch (e) {
-                        console.error("Erreur lors du chargement des stats:", e);
-                    }
-                },
+              //  async loadStats() {
+              //      try {
+              //          const r = await axios.get('https://musica.zapto.org/api/stats', { withCredentials: true });
+              //          this.stats.totalHits = r.data.totalHits;
+              //          this.stats.totalSongs = r.data.totalSongs;
+              //      } catch (e) {
+              //          console.error("Erreur lors du chargement des stats:", e);
+              //      }
+              //  },
 
                 // Incrémente le compteur global de clics (totalHits) via lAPI
                 async incrementHits() {
                     try {
                         await axios.post('https://musica.zapto.org/api/increment-hits', {}, { withCredentials: true });
-                        await this.loadStats(); 
+                        //await this.loadStats(); 
                     } catch (e) {
                         console.error("Erreur lors de l'incrémentation des hits:", e);
                     }

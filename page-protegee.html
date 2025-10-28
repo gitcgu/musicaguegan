@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page Protégée</title>
+    <style>
+        /* Style pour cacher le bouton initialement */
+        .hidden-button {
+            opacity: 0.5;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin: 10px;
+            display: inline-block; /* ou block */
+        }
+        .hidden-button:hover {
+            opacity: 1;
+        }
+.loader {
+    border: 8px solid #f3f3f3; /* Couleur de fond */
+    border-top: 8px solid #3498db; /* Couleur de la barre de chargement */
+    border-radius: 50%;
+    width: 35px;
+    height: 35px;
+    animation: spin 1s linear infinite; /* Animation de rotation */
+    margin: 10px auto; /* Centrage */
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+    </style>
+</head>
+<body>
+
+    <h1>Accès protégé</h1>
+<!--        <div id="links"></div> 
+    <a href="/">Retour à la page d'accueil</a> -->
+
+    <!-- Bouton "caché" sur la page principale (qui mènerait ici) -->
+    <!-- Pour cet exemple, on simule qu'on est déjà sur la page protégée -->
+    <!-- <div class="hidden-button" onclick="window.location.href='/page-protegee'">Accès spécial</div> -->
+
+    <form action="/submit-chiffre" method="POST">
+        <label for="password">Mot de passe :</label>
+        <input type="password" id="password" name="password" required>
+        <br><br>
+        <label for="chiffre">Collez votre chiffre (ou saisir 'list'):</label>
+        <input type="text" id="chiffre" name="chiffre" required>
+        <br><br>
+        <button type="submit">Envoyer</button>
+    </form>
+        <br><br>
+        <br><br>
+
+ <a href="/">Retour à la page d'accueil</a>
+    <div id="resultat"></div>
+
+<script>
+    document.querySelector('form').addEventListener('submit', async function(e) {
+        e.preventDefault(); // Empêche le rechargement de la page
+
+        const form = this;
+        const submitButton = form.querySelector('button[type="submit"]');
+        const resultatDiv = document.getElementById('resultat');
+
+        // Afficher un message "en cours"
+        resultatDiv.innerHTML = '<p>Traitement en cours, veuillez patienter...</p><div class="loader"></div>';
+        submitButton.disabled = true; // Désactive le bouton pendant le traitement
+
+        const formData = new FormData(form);
+        try {
+            const response = await fetch(form.action, {
+                method: form.method,
+                body: formData
+            });
+
+            if (response.ok) { // Si le code de statut est 2xx
+                const htmlResult = await response.text();
+                resultatDiv.innerHTML = htmlResult; // Affiche les liens HTML ou le résultat
+            } else {
+                const errorText = await response.text();
+                resultatDiv.innerHTML = `<p style="color: red;">Erreur : ${errorText}</p>`;
+            }
+
+        } catch (error) {
+            resultatDiv.innerHTML = `<p style="color: red;">Erreur de connexion : ${error.message}</p>`;
+        } finally {
+            submitButton.disabled = false; // Réactive le bouton
+        }
+    });
+</script>
+</body>
+</html>

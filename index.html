@@ -195,7 +195,8 @@
                 async fetchNextSongFromAPI(increment = true) {
                     console.log("Appel à fetchNextSongFromAPI pour charger une NOUVELLE chanson depuis l'API...");
                     try {
-                        const r = await axios.get('https://musica.zapto.org/api/next-song', { withCredentials: true });
+//                        const r = await axios.get('https://musica.zapto.org/api/next-song', { withCredentials: true });
+                        const r = await axios.get('https://35.188.87.59/api/next-song', { withCredentials: true });
                         console.log("Réponse API next-song:", r.data);
                         
                         const newSongData = {
@@ -406,7 +407,8 @@
                 // Incrémente le compteur global de clics (totalHits) via lAPI
                 async incrementHits() {
                     try {
-                        await axios.post('https://musica.zapto.org/api/increment-hits', {}, { withCredentials: true });
+//                        await axios.post('https://musica.zapto.org/api/increment-hits', {}, { withCredentials: true });
+                        await axios.post('https://35.188.87.59/api/increment-hits', {}, { withCredentials: true });
                         //await this.loadStats(); 
                     } catch (e) {
                         console.error("Erreur lors de l'incrémentation des hits:", e);

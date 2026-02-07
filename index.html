@@ -41,7 +41,8 @@
 </head>
 <body>
 <div id="app">
-    <div class="container" :style="{backgroundColor:bgColor, backgroundImage:bgImage, color:textColor}">
+    <div class="container" :style="{backgroundColor:bgColor, /* backgroundImage:bgImage, */ color:textColor}">
+
         <h1 class="song-title">{{songName || 'Chargement...'}}</h1>
         <audio ref="player" :src="songUrl" controls @ended="handleSongEnd"></audio>
 
@@ -133,7 +134,7 @@ watch: {
                 this.songUrl = newSongData.url;
                 this.bgColor = r.data.color || '#000';
                 this.textColor = r.data.textColor || '#FFF';
-                this.bgImage = r.data.cover ? `url('${r.data.cover}')` : '';
+               // this.bgImage = r.data.cover ? `url('${r.data.cover}')` : '';
 
                 if (this.playbackHistory.length === 0 || this.playbackHistory[this.playbackHistory.length - 1].url !== this.songUrl) {
                     this.playbackHistory.push(newSongData);

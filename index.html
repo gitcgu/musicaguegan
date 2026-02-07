@@ -97,10 +97,31 @@ createApp({
             isNavigatingHistory: false
         };
     },
+watch: {
+  songUrl() {
+    this.$nextTick(() => {
+      const p = this.$refs.player;
+      if (!p) return;
+
+      p.load();
+      p.play()
+        .then(() => {
+          this.player.paused = false;
+        })
+        .catch(() => {
+          // autoplay bloqué tant que l'utilisateur n'a pas cliqué une fois
+        });
+    });
+  }
+},
+
+    
     async mounted() {
         this.loadPlaybackHistory();
         await this.fetchNextSongFromAPI(false);
     },
+
+    
     methods: {
         async fetchNextSongFromAPI(increment = true) {
             try {

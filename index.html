@@ -3,13 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="Permissions-Policy" content="interest-cohort=()">
-
     <title>Musica</title>
     <script src="https://unpkg.com/vue@3"></script>
     <script src="https://unpkg.com/axios"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Lucida Sans', sans-serif; }
+        body { font-family: 'Lucida Sans', sans-serif; background: #000; color: #fff; }
         .container {
             min-height: 100vh;
             padding: 20px;
@@ -21,452 +20,162 @@
             align-items: center;
             text-align: center;
         }
-        .song-title {
-            font-size: 4em;
-            margin: 20px 0;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
-            max-width: 80%;
-            word-wrap: break-word;
-        }
-        audio {
-            width: 100%;
-            max-width: 1200px;
-            height: 100px;
-            margin-top: 20px;
-        }
-        .controls {
-            margin-top: 30px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        /* --- STYLES POUR LES BOUTONS RONDS (PLAY/PAUSE, NEXT, PREV, REPLAY) --- */
+        .song-title { font-size: 4em; margin: 20px 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); max-width: 80%; word-wrap: break-word; }
+        audio { width: 100%; max-width: 1200px; height: 100px; margin-top: 20px; }
+        .controls { margin-top: 30px; display: flex; justify-content: center; align-items: center; flex-wrap: wrap; }
         .btn {
-            width: 160px;
-            height: 160px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            border-radius: 50%;
-            margin: 20px;
-            border: 5px solid;
-            border-color: inherit;
-            font-size: 64px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            text-align: center;
+            width: 160px; height: 160px; display: flex; justify-content: center; align-items: center;
+            border-radius: 50%; margin: 20px; border: 5px solid; border-color: inherit;
+            font-size: 64px; font-weight: bold; cursor: pointer; transition: all 0.3s ease; text-align: center;
         }
-        .btn:hover {
-            transform: scale(1.1);
-            filter: brightness(1.2);
-        }
-        /* --- FIN DES STYLES POUR .btn --- */
-
-        .section-title {
-            font-size: 2.5em;
-            margin: 40px 0 20px;
-            width: 100%;
-        }
-
-        .radio-btn {
-            font-size: 2em;
-            padding: 20px 40px;
-            margin: 10px auto;
-            border-radius: 12px;
-            cursor: pointer;
-            display: block;
-            border: 3px solid rgba(0,0,0,0.3);
-            max-width: 80%;
-        }
-        /* Style pour rendre le lien moins visible ou agir comme un bouton caché */
+        .btn:hover { transform: scale(1.1); filter: brightness(1.2); }
+        .section-title { font-size: 2.5em; margin: 40px 0 20px; width: 100%; }
         .hidden-button-link a {
-            color: #aaa; /* Couleur discrète */
-            text-decoration: none; /* Pas de soulignement */
-            font-size: 0.8em; /* Plus petit */
-            border: 1px solid #ccc; /* Bordure légère */
-            padding: 5px 10px;
-            display: inline-block;
-            margin: 10px;
-            opacity: 0.6;
-            transition: opacity 0.3s ease;
+            color: #aaa; text-decoration: none; font-size: 0.8em; border: 1px solid #ccc;
+            padding: 5px 10px; display: inline-block; margin: 10px; opacity: 0.6; transition: opacity 0.3s ease;
         }
-        .hidden-button-link a:hover {
-            opacity: 1; /* Devient plus visible au survol */
-            color: #333;
-        }
-        .stats {
-            margin-top: 40px;
-            font-size: 1.2em;
-            font-style: italic;
-            width: 100%;
-        }
-        .stats p {
-            color: black;
-        }
+        .hidden-button-link a:hover { opacity: 1; color: #333; }
+        .stats { margin-top: 40px; font-size: 1.2em; font-style: italic; width: 100%; }
+        .stats p { color: black; }
     </style>
 </head>
 <body>
-    <div id="app">
-        <div class="container" :style="{backgroundColor:bgColor, backgroundImage:bgImage, color:textColor}">
-            <h1 class="song-title">{{songName}}</h1>
-            <audio ref="player" :src="songUrl" controls @ended="handleSongEnd"></audio>
+<div id="app">
+    <div class="container" :style="{backgroundColor:bgColor, backgroundImage:bgImage, color:textColor}">
+        <h1 class="song-title">{{songName || 'Chargement...'}}</h1>
+        <audio ref="player" :src="songUrl" controls @ended="handleSongEnd"></audio>
 
-            <div class="section-title">M U $ I C</div>
-            <div class="controls">
-                <!-- Bouton Précédent -->
-                <button class="btn" :style="{backgroundColor:textColor,color:bgColor}" @click="previousSong">
-                    &lt;&lt;
-                </button>
-                <!-- Bouton Play/Pause qui affiche le symbole ▶ ou ⏸ -->
-                <button class="btn" :style="{backgroundColor:textColor,color:bgColor}" @click="togglePlay">
-                    {{ player.paused ? '▶' : '⏸' }}
-                </button>
-                <!-- Bouton Rejouer -->
-                 <button class="btn" :style="{backgroundColor:textColor,color:bgColor}" @click="replaySong">
-                    ↻ <!-- Symbole de rejouer -->
-                </button>
-                <!-- Bouton Next -->
-                <button class="btn" :style="{backgroundColor:textColor,color:bgColor}" @click="handleNextClick">
-                    &gt;&gt;
-                </button>
-            </div>
+        <div class="section-title">M U $ I C</div>
+        <div class="controls">
+            <button class="btn" :style="{backgroundColor:textColor,color:bgColor}" @click="previousSong">&lt;&lt;</button>
+            <button class="btn" :style="{backgroundColor:textColor,color:bgColor}" @click="togglePlay">
+                {{ player.paused ? '▶' : '⏸' }}
+            </button>
+            <button class="btn" :style="{backgroundColor:textColor,color:bgColor}" @click="replaySong">↻</button>
+            <button class="btn" :style="{backgroundColor:textColor,color:bgColor}" @click="handleNextClick">&gt;&gt;</button>
+        </div>
 
-            <!-- Section Radio -->
-            <div class="section-title">R A D I O</div>
-<div>
-    <audio ref="radioFip" src="https://direct.fipradio.fr/live/fip-midfi.mp3"></audio>
-    <button class="btn" :style="{backgroundColor:textColor,color:bgColor,fontSize: '52px'}" @click="toggleRadio('fip')">
-        {{ radios.fip ? '⏸' : '▶' }} FIP 
-    </button>
-</div>
-<div>
-    <audio ref="radioCulture" src="https://direct.franceculture.fr/live/franceculture-midfi.mp3"></audio>
-    <button class="btn" :style="{backgroundColor:textColor,color:bgColor,fontSize: '35px'}" @click="toggleRadio('fc')">
-        {{ radios.fc ? '⏸' : '▶' }} France Culture
-    </button>
-</div>
+        <div class="section-title">R A D I O</div>
+        <div>
+            <audio ref="radioFip" src="https://direct.fipradio.fr/live/fip-midfi.mp3"></audio>
+            <button class="btn" :style="{backgroundColor:textColor,color:bgColor,fontSize:'52px'}" @click="toggleRadio('fip')">
+                {{ radios.fip ? '⏸' : '▶' }} FIP
+            </button>
+        </div>
+        <div>
+            <audio ref="radioCulture" src="https://direct.franceculture.fr/live/franceculture-midfi.mp3"></audio>
+            <button class="btn" :style="{backgroundColor:textColor,color:bgColor,fontSize:'35px'}" @click="toggleRadio('fc')">
+                {{ radios.fc ? '⏸' : '▶' }} France Culture
+            </button>
+        </div>
 
-           <!-- C'est ici qu'on ajoute le lien vers la page protégée -->
-           <!-- On peut le styliser pour qu'il ressemble à un bouton "caché" -->
-          <div class="hidden-button-link">
+        <div class="hidden-button-link">
             <a href="/page-protegee">Accès fonction spéciale</a>
-          </div>
-            <!-- Section Stats (uniquement la phrase) -->
-            <div>
-                <p>cé mizik an nou ki pli bel ®</p>
-            </div>
+        </div>
+
+        <div class="stats">
+            <p>cé mizik an nou ki pli bel ®</p>
+        </div>
     </div>
+</div>
 
 <script>
-        const { createApp } = Vue;
-        createApp({
-            data() {
-                return {
-                    songName: '',
-                    songUrl: '',
-                    bgColor: '#000',
-                    textColor: '#FFF',
-                    bgImage: '',
-                    player: {
-                        paused: false
-                    },
-                    radios: { fip: false, fc: false },
-                    //stats: { totalHits: 0, sessionPlayed: 0, totalSongs: 0 },
+const { createApp } = Vue;
 
-                    // --- HISTORIQUE DE LECTURE ---
-                    playbackHistory: [], // Stocke { name: 'Nom', url: 'URL' }
-                    currentHistoryIndex: -1, // Index de la chanson ACTUELLEMENT jouée dans playbackHistory
-                    isNavigatingHistory: false // Pour savoir si on est en mode "parcours historique" ou "nouvelle chanson API"
-                };
-            },
-            async mounted() {
-                console.log("Composant monté. Chargement des stats, historique et première chanson...");
-                //await this.loadStats();
-                this.loadPlaybackHistory(); // Charge l'historique depuis localStorage
-                // Charge la première chanson depuis l'API, mais la met en attente
-                await this.fetchNextSongFromAPI(false); 
-                console.log("Première chanson API chargée en attente. songUrl =", this.songUrl);
-            },
-            methods: {
-                // --- GESTION DE L'API POUR UNE NOUVELLE CHANSON ---
-                async fetchNextSongFromAPI(increment = true) {
-                    console.log("Appel à fetchNextSongFromAPI pour charger une NOUVELLE chanson depuis l'API...");
-                    try {
-//                        const r = await axios.get('https://musica.zapto.org/api/next-song', { withCredentials: true });
-//                        const r = await axios.get('http://35.188.87.59/api/next-song', { withCredentials: true });
-                         const r = await axios.get('https://musicabackend.uc.r.appspot.com/api/next-song', { withCredentials: true });
-                       // https://musicabackend.uc.r.appspot.com
-                        console.log("Réponse API next-song:", r.data);
-                        
-                        const newSongData = {
-                            name: r.data.songName,
-                            url: r.data.url
-                        };
+createApp({
+    data() {
+        return {
+            songName: '',
+            songUrl: '',
+            bgColor: '#000',
+            textColor: '#FFF',
+            bgImage: '',
+            player: { paused: false },
+            radios: { fip: false, fc: false },
+            playbackHistory: [],
+            currentHistoryIndex: -1,
+            isNavigatingHistory: false
+        };
+    },
+    async mounted() {
+        this.loadPlaybackHistory();
+        await this.fetchNextSongFromAPI(false);
+    },
+    methods: {
+        async fetchNextSongFromAPI(increment = true) {
+            try {
+                const r = await axios.get('https://musicabackend.uc.r.appspot.com/api/next-song', { withCredentials: true });
+                const newSongData = { name: r.data.songName, url: r.data.url };
+                if (!newSongData.url) { alert("Chanson indisponible."); return; }
 
-                        this.songName = newSongData.name;
-                        this.songUrl = newSongData.url;
-                        this.bgColor = r.data.color;
-                        this.textColor = r.data.textColor;
-                        
-                        if (r.data.cover && typeof r.data.cover === 'string') {
-                            this.bgImage = `url('${r.data.cover}')`;
-                        } else {
-                            this.bgImage = '';
-                        }
-                        console.log("bgImage configuré à :", this.bgImage);
+                this.songName = newSongData.name;
+                this.songUrl = newSongData.url;
+                this.bgColor = r.data.color || '#000';
+                this.textColor = r.data.textColor || '#FFF';
+                this.bgImage = r.data.cover ? `url('${r.data.cover}')` : '';
 
-                        if (!this.songUrl) {
-                            console.error("L'URL de la chanson est vide après l'appel API.");
-                            alert("Aucune chanson chargée. Cliquez sur Next pour en charger une.");
-                            return; 
-                        }
-
-                        // --- GESTION DE L'HISTORIQUE QUAND ON JOUE UNE NOUVELLE CHANSON API ---
-                        // On ajoute cette nouvelle chanson à l'historique, seulement si ce n'est pas la même que la dernière ajoutée
-                        if (this.playbackHistory.length === 0 || this.playbackHistory[this.playbackHistory.length - 1].url !== this.songUrl) {
-                            this.playbackHistory.push(newSongData);
-                            if (this.playbackHistory.length > 20) {
-                                this.playbackHistory.shift(); // Garde max 20 chansons
-                            }
-                            this.currentHistoryIndex = this.playbackHistory.length - 1; // Le nouvel index est le dernier élément ajouté
-                            this.savePlaybackHistory(); // Sauvegarde l'historique
-                            console.log("Nouvelle chanson API ajoutée à l'historique. Historique:", this.playbackHistory);
-                        } else {
-                            console.log("La chanson API est déjà la dernière de l'historique, pas d'ajout.");
-                            // Si c'est la même, on avance juste l'index pour refléter qu'on est sur cette chanson
-                            this.currentHistoryIndex = this.playbackHistory.length - 1;
-                        }
-                        // --- FIN GESTION HISTORIQUE ---
-
-                        this.player.paused = true; // Toujours en pause quand une nouvelle chanson est chargée
-                        this.isNavigatingHistory = false; // On n'est plus en mode navigation historique
-                        
-                        if (increment) {
-                            console.log(" increment ");
-                           // await this.loadStats();
-                        }
-
-                    } catch (e) {
-                        console.error("Erreur dans fetchNextSongFromAPI lors du chargement:", e);
-                        alert("Impossible de charger une nouvelle chanson depuis l'API. Vérifiez votre connexion.");
-                    }
-                },
-                
-                // Gère le clic sur le bouton Play/Pause
-                togglePlay() {
-                    const p = this.$refs.player;
-
-                    if (!this.songUrl) {
-                        console.warn("songUrl est vide, on ne peut pas jouer.");
-                        alert("Aucune chanson chargée. Cliquez sur Next pour en charger une.");
-                        return;
-                    }
-
-                    console.log("Clic sur togglePlay. État actuel 'paused':", this.player.paused);
-
-                    if (this.player.paused) { 
-                        console.log("Tentative de lecture...");
-                        p.play()
-                         .then(() => {
-                             console.log("Lecture démarrée avec succès.");
-                             this.player.paused = false; 
-                             this.incrementHits(); 
-                         })
-                         .catch(e => {
-                             console.error("Erreur lors de la lecture de la chanson:", e);
-                             alert("Lecture audio non autorisée ou erreur de lecture.");
-                         });
-                    } else { 
-                        console.log("Mise en pause...");
-                        p.pause();
-                        this.player.paused = true;
-                    }
-                },
-                
-                // Gère le clic sur le bouton Next (peut être nouvelle chanson API OU suivante dans l'historique)
-                handleNextClick() {
-                    console.log("Clic sur le bouton NEXT.");
-                    
-                    // Si on était en train de naviguer dans l'historique, on passe à la chanson suivante de l'historique
-                    if (this.isNavigatingHistory) {
-                        this.nextSongFromHistory();
-                    } else {
-                        // Sinon, on charge une toute nouvelle chanson depuis l'API
-                        this.fetchNextSongFromAPI(true); 
-                    }
-                },
-
-                // Gère l'événement @ended de l'audio (quand la chanson se termine)
-                handleSongEnd() {
-                    console.log("La chanson actuelle s'est terminée.");
-                    // Si on était en mode navigation historique, on continue la séquence historique
-                    if (this.isNavigatingHistory) {
-                        this.nextSongFromHistory();
-                    } else {
-                        // Sinon, on charge une nouvelle chanson depuis l'API
-                        this.fetchNextSongFromAPI(false); // false car @ended ne doit pas incrémenter les stats
-                    }
-                },
-
-                // Méthode pour charger une chanson depuis l'historique par son index
-                async loadSongFromHistory(indexToLoad) {
-                    console.log("Chargement de la chanson depuis l'historique à l'index :", indexToLoad);
-                    if (indexToLoad >= 0 && indexToLoad < this.playbackHistory.length) {
-                        const songData = this.playbackHistory[indexToLoad];
-                        this.songUrl = songData.url;
-                        this.songName = songData.name; 
-                        this.bgColor = '#333'; // Couleur par défaut pour l'historique
-                        this.textColor = '#EEE';
-                        this.bgImage = '';
-
-                        this.player.paused = true; // Met en pause pour que le clic Play fonctionne
-                        this.currentHistoryIndex = indexToLoad; // Met à jour l'index courant
-                        this.isNavigatingHistory = true; // On est maintenant en mode navigation historique
-                        console.log("Chanson de l'historique chargée:", this.songName, this.songUrl, "Index:", this.currentHistoryIndex);
-                    } else {
-                        console.log("Index d'historique invalide ou hors limites.");
-                        // Si l'index est invalide, on peut soit charger une nouvelle chanson, soit ignorer.
-                        // Ici, on va ignorer pour le moment.
-                        alert("Aucune chanson trouvée à cet index.");
-                    }
-                },
-
-                // Gère le clic sur le bouton Précédent ( << )
-                previousSong() {
-                    console.log("Clic sur le bouton PRECEDENT.");
-                    if (this.currentHistoryIndex > 0) {
-                        // On décrémente l'index et on charge la chanson précédente de l'historique
-                        this.loadSongFromHistory(this.currentHistoryIndex - 1);
-                    } else {
-                        console.log("Pas de chanson précédente dans l'historique.");
-                        alert("Pas de chanson précédente dans l'historique.");
-                    }
-                },
-
-                // Gère la transition vers la chanson SUIVANTE DANS L'HISTORIQUE
-                nextSongFromHistory() {
-                    console.log("Passage à la chanson suivante DANS L'HISTORIQUE.");
-                    if (this.currentHistoryIndex < this.playbackHistory.length - 1) {
-                        // On incrémente l'index et on charge la chanson suivante de l'historique
-                        this.loadSongFromHistory(this.currentHistoryIndex + 1);
-                    } else {
-                        console.log("Fin de l'historique. Chargement d'une nouvelle chanson depuis l'API.");
-                        // Si on est à la fin de l'historique, on charge une nouvelle chanson depuis l'API
-                        this.fetchNextSongFromAPI(true); 
-                    }
-                },
-
-                 // Gère le clic sur le bouton Rejouer ( ↻ )
-                replaySong() {
-                    const p = this.$refs.player;
-                    if (this.songUrl) { 
-                        console.log("Rejouer la chanson actuelle.");
-                        p.currentTime = 0; // Remet la lecture au début
-                        p.play().then(() => {
-                            this.player.paused = false; 
-                        }).catch(e => {
-                            console.error("Erreur lors de la relecture de la chanson:", e);
-                             alert("Erreur lors de la relecture.");
-                        });
-                    } else {
-                        console.warn("songUrl vide, impossible de rejouer.");
-                        alert("Aucune chanson chargée pour rejouer.");
-                    }
-                },
-
-                // Gère les radios
-                toggleRadio(n) {
-                    const refs = { fip: 'radioFip', fc: 'radioCulture' };
-                    const p = this.$refs[refs[n]];
-
-                    if (p.paused) {
-                        p.play().then(() => {
-                            this.radios[n] = true;
-                        }).catch(e => {
-                            console.error(`Erreur lors de la lecture de la radio ${n}:`, e);
-                            alert(`Impossible de lire la radio ${n}.`);
-                        });
-                    } else {
-                        p.pause();
-                        this.radios[n] = false;
-                    }
-                },
-
-                // Charge les statistiques globales (totalHits, totalSongs)
-              //  async loadStats() {
-              //      try {
-              //          const r = await axios.get('https://musica.zapto.org/api/stats', { withCredentials: true });
-              //          this.stats.totalHits = r.data.totalHits;
-              //          this.stats.totalSongs = r.data.totalSongs;
-              //      } catch (e) {
-              //          console.error("Erreur lors du chargement des stats:", e);
-              //      }
-              //  },
-
-                // Incrémente le compteur global de clics (totalHits) via lAPI
-                async incrementHits() {
-                    try {
-//                        await axios.post('https://musica.zapto.org/api/increment-hits', {}, { withCredentials: true });
- //                       await axios.post('http://35.188.87.59/api/increment-hits', {}, { withCredentials: true });
-                        await axios.post('https://musicabackend.uc.r.appspot.com/api/increment-hits', {}, { withCredentials: true });
-                        // https://musicabackend.uc.r.appspot.com
-                        //await this.loadStats(); 
-                    } catch (e) {
-                        console.error("Erreur lors de l'incrémentation des hits:", e);
-                    }
-                },
-
-                // --- Méthodes pour gérer localStorage ---
-                savePlaybackHistory() {
-                    try {
-                        localStorage.setItem('musicagueganHistory', JSON.stringify(this.playbackHistory));
-                        console.log("Historique sauvegardé dans localStorage :", this.playbackHistory);
-                    } catch (e) {
-                        console.error("Erreur lors de la sauvegarde de l'historique dans localStorage:", e);
-                    }
-                },
-                loadPlaybackHistory() {
-                    try {
-                        const history = localStorage.getItem('musicagueganHistory');
-                        if (history) {
-                            const parsedHistory = JSON.parse(history);
-                            // S'assurer que les données sont bien des objets { name, url }
-                            this.playbackHistory = parsedHistory.filter(item => item && item.name && item.url);
-                            // Si l'historique a été chargé, l'index courant est le dernier élément de cet historique.
-                            // Note: Ceci suppose que le dernier élément de l'historique est la chanson qui était en cours de lecture
-                            // quand le navigateur a été fermé. Si on veut toujours commencer par une nouvelle chanson API à l'ouverture,
-                            // il faudrait initialiser currentHistoryIndex à -1 et isNavigatingHistory à false.
-                            // Pour l'instant, on restaure l'état de lecture potentiel.
-                            if (this.playbackHistory.length > 0) {
-                                this.currentHistoryIndex = this.playbackHistory.length - 1;
-                                // On charge la dernière chanson de l'historique pour que la navigation << >> ait un point de départ
-                                // Mais on ne la joue pas, on la laisse en pause.
-                                this.loadSongFromHistory(this.currentHistoryIndex);
-                                this.isNavigatingHistory = true; // On est en mode navigation historique dès le départ
-                                console.log("Historique chargé depuis localStorage. Index courant:", this.currentHistoryIndex);
-                            } else {
-                                console.log("Historique chargé mais vide.");
-                                this.currentHistoryIndex = -1;
-                                this.isNavigatingHistory = false;
-                            }
-                        } else {
-                            console.log("Aucun historique trouvé dans localStorage.");
-                            this.playbackHistory = [];
-                            this.currentHistoryIndex = -1;
-                            this.isNavigatingHistory = false;
-                        }
-                    } catch (e) {
-                        console.error("Erreur lors du chargement de l'historique depuis localStorage:", e);
-                        this.playbackHistory = [];
-                        this.currentHistoryIndex = -1;
-                        this.isNavigatingHistory = false;
-                    }
+                if (this.playbackHistory.length === 0 || this.playbackHistory[this.playbackHistory.length - 1].url !== this.songUrl) {
+                    this.playbackHistory.push(newSongData);
+                    if (this.playbackHistory.length > 20) this.playbackHistory.shift();
+                    this.currentHistoryIndex = this.playbackHistory.length - 1;
+                    this.savePlaybackHistory();
+                } else {
+                    this.currentHistoryIndex = this.playbackHistory.length - 1;
                 }
+
+                this.player.paused = true;
+                this.isNavigatingHistory = false;
+            } catch(e) {
+                console.error("Erreur next-song:", e.response ? e.response.status : e);
+                alert("Impossible de charger la chanson depuis l'API.");
             }
-        }).mount('#app')
-    </script>
+        },
+        togglePlay() {
+            const p = this.$refs.player;
+            if (!this.songUrl) { alert("Aucune chanson chargée."); return; }
+            if (this.player.paused) p.play().then(() => this.player.paused=false).catch(() => alert("Erreur lecture."));
+            else { p.pause(); this.player.paused=true; }
+        },
+        handleNextClick() {
+            if (this.isNavigatingHistory) this.nextSongFromHistory();
+            else this.fetchNextSongFromAPI(true);
+        },
+        handleSongEnd() {
+            if (this.isNavigatingHistory) this.nextSongFromHistory();
+            else this.fetchNextSongFromAPI(false);
+        },
+        loadSongFromHistory(indexToLoad) {
+            if (indexToLoad < 0 || indexToLoad >= this.playbackHistory.length) { alert("Pas de chanson."); return; }
+            const songData = this.playbackHistory[indexToLoad];
+            if (!songData.url) { alert("Chanson indisponible."); return; }
+            this.songUrl = songData.url;
+            this.songName = songData.name;
+            this.bgColor = '#333';
+            this.textColor = '#EEE';
+            this.bgImage = '';
+            this.player.paused = true;
+            this.currentHistoryIndex = indexToLoad;
+            this.isNavigatingHistory = true;
+        },
+        previousSong() { if (this.currentHistoryIndex > 0) this.loadSongFromHistory(this.currentHistoryIndex - 1); else alert("Pas de chanson précédente."); },
+        nextSongFromHistory() { if (this.currentHistoryIndex < this.playbackHistory.length - 1) this.loadSongFromHistory(this.currentHistoryIndex + 1); else this.fetchNextSongFromAPI(true); },
+        replaySong() { const p=this.$refs.player; if(this.songUrl){p.currentTime=0;p.play().then(()=>this.player.paused=false).catch(()=>alert("Erreur relecture."));} else alert("Aucune chanson à rejouer."); },
+        toggleRadio(n) {
+            const refs={fip:'radioFip',fc:'radioCulture'}; const p=this.$refs[refs[n]];
+            if(p.paused) p.play().then(()=>this.radios[n]=true).catch(()=>alert(`Impossible de lire ${n}.`));
+            else { p.pause(); this.radios[n]=false; }
+        },
+        savePlaybackHistory() { try{ localStorage.setItem('musicagueganHistory', JSON.stringify(this.playbackHistory)); } catch(e){console.error(e);} },
+        loadPlaybackHistory() {
+            try {
+                const history=JSON.parse(localStorage.getItem('musicagueganHistory')||'[]');
+                this.playbackHistory=history.filter(item=>item && item.url);
+                if(this.playbackHistory.length>0){this.currentHistoryIndex=this.playbackHistory.length-1;this.loadSongFromHistory(this.currentHistoryIndex);} 
+                else { this.currentHistoryIndex=-1; this.isNavigatingHistory=false; }
+            } catch(e){ console.error(e); this.playbackHistory=[]; this.currentHistoryIndex=-1; this.isNavigatingHistory=false; }
+        }
+    }
+}).mount('#app');
+</script>
 </body>
 </html>

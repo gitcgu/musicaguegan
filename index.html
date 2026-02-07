@@ -196,7 +196,9 @@
                     console.log("Appel à fetchNextSongFromAPI pour charger une NOUVELLE chanson depuis l'API...");
                     try {
 //                        const r = await axios.get('https://musica.zapto.org/api/next-song', { withCredentials: true });
-                        const r = await axios.get('http://35.188.87.59/api/next-song', { withCredentials: true });
+//                        const r = await axios.get('http://35.188.87.59/api/next-song', { withCredentials: true });
+                         const r = await axios.get('https://musicabackend.uc.r.appspot.com/api/next-song', { withCredentials: true });
+                       // https://musicabackend.uc.r.appspot.com
                         console.log("Réponse API next-song:", r.data);
                         
                         const newSongData = {
@@ -408,7 +410,9 @@
                 async incrementHits() {
                     try {
 //                        await axios.post('https://musica.zapto.org/api/increment-hits', {}, { withCredentials: true });
-                        await axios.post('http://35.188.87.59/api/increment-hits', {}, { withCredentials: true });
+ //                       await axios.post('http://35.188.87.59/api/increment-hits', {}, { withCredentials: true });
+                        await axios.post('https://musicabackend.uc.r.appspot.com/api/increment-hits', {}, { withCredentials: true });
+                        // https://musicabackend.uc.r.appspot.com
                         //await this.loadStats(); 
                     } catch (e) {
                         console.error("Erreur lors de l'incrémentation des hits:", e);

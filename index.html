@@ -6,7 +6,6 @@
     <title>Musica</title>
     <script src="https://unpkg.com/vue@3"></script>
     <script src="https://unpkg.com/axios"></script>
-    <!-- 🎵 WAVESURFER CDN -->
     <script src="https://unpkg.com/wavesurfer.js@6"></script>
     
     <style>
@@ -25,13 +24,56 @@
         }
         .song-title { font-size: 4em; margin: 20px 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); max-width: 80%; word-wrap: break-word; }
         
+        /* 🎵 SOUNDCLOUD-STYLE WAVEFORM */
         #waveform {
+            cursor: pointer;
+            position: relative;
             width: 100%;
             max-width: 1200px;
             height: 100px;
             margin-top: 20px;
             border-radius: 8px;
             overflow: hidden;
+        }
+        
+        #hover {
+            position: absolute;
+            left: 0;
+            top: 0;
+            z-index: 10;
+            pointer-events: none;
+            height: 100%;
+            width: 0;
+            mix-blend-mode: overlay;
+            background: rgba(255, 255, 255, 0.5);
+            opacity: 0;
+            transition: opacity 0.2s ease;
+        }
+        
+        #waveform:hover #hover {
+            opacity: 1;
+        }
+        
+        #time, #duration {
+            position: absolute;
+            z-index: 11;
+            top: 50%;
+            margin-top: -10px;
+            transform: translateY(-50%);
+            font-size: 12px;
+            background: rgba(0, 0, 0, 0.75);
+            padding: 4px 8px;
+            border-radius: 3px;
+            color: #ddd;
+            font-weight: bold;
+        }
+        
+        #time {
+            left: 10px;
+        }
+        
+        #duration {
+            right: 10px;
         }
         
         .controls { margin-top: 30px; display: flex; justify-content: center; align-items: center; flex-wrap: wrap; }
@@ -55,7 +97,13 @@
 <div id="app">
     <div class="container" :style="{backgroundColor:bgColor, color:textColor}">
         <h1 class="song-title">{{songName || 'Chargement...'}}</h1>
-        <div id="waveform"></div>
+        
+        <!-- 🎵 SOUNDCLOUD-STYLE WAVEFORM -->
+        <div id="waveform">
+            <div id="time">0:00</div>
+            <div id="duration">0:00</div>
+            <div id="hover"></div>
+        </div>
 
         <div class="section-title">M U $ I C</div>
         <div class="controls">
@@ -111,26 +159,77 @@ createApp({
     },
 
     async mounted() {
-        // 🎵 WAVESURFER CRÉÉ AUTOMATIQUEMENT (CDN chargé)
+        // 🎵 CRÉER GRADIENT SOUNDCLOUD-STYLE
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = 1;
+        canvas.height = 130;
+
+        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height * 1.35);
+        gradient.addColorStop(0, '#656666');
+        gradient.addColorStop((canvas.height * 0.7) / canvas.height, '#656666');
+        gradient.addColorStop((canvas.height * 0.7 + 1) / canvas.height, '#ffffff');
+        gradient.addColorStop((canvas.height * 0.7 + 2) / canvas.height, '#ffffff');
+        gradient.addColorStop((canvas.height * 0.7 + 3) / canvas.height, '#B1B1B1');
+        gradient.addColorStop(1, '#B1B1B1');
+
+        const progressGradient = ctx.createLinearGradient(0, 0, 0, canvas.height * 1.35);
+        progressGradient.addColorStop(0, '#EE772F');
+        progressGradient.addColorStop((canvas.height * 0.7) / canvas.height, '#EB4926');
+        progressGradient.addColorStop((canvas.height * 0.7 + 1) / canvas.height, '#ffffff');
+        progressGradient.addColorStop((canvas.height * 0.7 + 2) / canvas.height, '#ffffff');
+        progressGradient.addColorStop((canvas.height * 0.7 + 3) / canvas.height, '#F6B094');
+        progressGradient.addColorStop(1, '#F6B094');
+
+        // 🎵 INITIALISER WAVESURFER
         this.wavesurfer = WaveSurfer.create({
             container: '#waveform',
-            waveColor: 'rgb(200, 0, 200)',
-            progressColor: 'rgb(100, 0, 100)',
-            barWidth: 2,
-            barGap: 1,
+            waveColor: gradient,
+            progressColor: progressGradient,
+            barWidth: 3,
+            barGap: 2,
             barRadius: 2,
-            height: 100
+            height: 100,
+            normalize: true
         });
 
+        // 🎵 ÉVÉNEMENTS WAVESURFER
         this.wavesurfer.on('finish', () => this.handleSongEnd());
         this.wavesurfer.on('play', () => this.isPlaying = true);
         this.wavesurfer.on('pause', () => this.isPlaying = false);
+
+        // Temps et durée
+        this.wavesurfer.on('decode', (duration) => {
+            document.querySelector('#duration').textContent = this.formatTime(duration);
+        });
+        this.wavesurfer.on('timeupdate', (currentTime) => {
+            document.querySelector('#time').textContent = this.formatTime(currentTime);
+        });
+
+        // 🎵 HOVER EFFECT
+        const waveform = document.querySelector('#waveform');
+        const hover = document.querySelector('#hover');
+        waveform.addEventListener('pointermove', (e) => {
+            hover.style.width = `${e.offsetX}px`;
+        });
+
+        // Click to play
+        this.wavesurfer.on('interaction', () => {
+            this.wavesurfer.playPause();
+        });
 
         this.loadPlaybackHistory();
         await this.fetchNextSongFromAPI(false);
     },
 
     methods: {
+        formatTime(seconds) {
+            const minutes = Math.floor(seconds / 60);
+            const secondsRemainder = Math.round(seconds) % 60;
+            const paddedSeconds = `0${secondsRemainder}`.slice(-2);
+            return `${minutes}:${paddedSeconds}`;
+        },
+
         async fetchNextSongFromAPI(increment = true) {
             try {
                 const r = await axios.get('https://musicabackend.uc.r.appspot.com/api/next-song', { withCredentials: true });
@@ -143,6 +242,8 @@ createApp({
                 this.textColor = r.data.textColor || '#FFF';
 
                 this.wavesurfer.load(this.songUrl);
+                document.querySelector('#time').textContent = '0:00';
+                document.querySelector('#duration').textContent = '0:00';
 
                 if (this.playbackHistory.length === 0 || this.playbackHistory[this.playbackHistory.length - 1].url !== this.songUrl) {
                     this.playbackHistory.push(newSongData);
@@ -186,6 +287,8 @@ createApp({
             this.bgColor = '#333';
             this.textColor = '#EEE';
             this.wavesurfer.load(this.songUrl);
+            document.querySelector('#time').textContent = '0:00';
+            document.querySelector('#duration').textContent = '0:00';
             this.isPlaying = false;
             this.currentHistoryIndex = indexToLoad;
             this.isNavigatingHistory = true;

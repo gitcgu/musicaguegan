@@ -80,6 +80,57 @@
             right: 15px;
         }
 
+        /* 🆕 LIKE/DISLIKE BUTTONS */
+        .feedback-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            margin: 25px 0;
+        }
+
+        .feedback-btn {
+            padding: 12px 25px;
+            font-size: 18px;
+            border: 2px solid;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: rgba(255, 255, 255, 0.1);
+            font-weight: bold;
+        }
+
+        .feedback-btn.like {
+            border-color: #ff4444;
+            color: #ff4444;
+        }
+
+        .feedback-btn.like:hover {
+            background: #ff4444;
+            color: #fff;
+            transform: scale(1.1);
+        }
+
+        .feedback-btn.like.active {
+            background: #ff4444;
+            color: #fff;
+        }
+
+        .feedback-btn.dislike {
+            border-color: #888;
+            color: #888;
+        }
+
+        .feedback-btn.dislike:hover {
+            background: #888;
+            color: #fff;
+            transform: scale(1.1);
+        }
+
+        .feedback-btn.dislike.active {
+            background: #888;
+            color: #fff;
+        }
+
         .section-title {
             font-size: 2em;
             font-weight: bold;
@@ -151,6 +202,13 @@
             border-color: #fff;
             background: rgba(255, 255, 255, 0.1);
         }
+
+        /* Stats utilisateur */
+        .user-stats {
+            margin-top: 30px;
+            font-size: 0.9em;
+            opacity: 0.7;
+        }
     </style>
 </head>
 <body>
@@ -164,6 +222,31 @@
             <div id="waveform" :style="{ backgroundColor: bgColor }">
                 <div id="time">0:00</div>
                 <div id="duration">0:00</div>
+            </div>
+
+            <!-- 🆕 LIKE/DISLIKE BUTTONS -->
+            <div class="feedback-buttons">
+                <button 
+                    class="feedback-btn like" 
+                    :class="{ active: currentFeedback === 'like' }"
+                    @click="likeSong"
+                    title="J'aime cette chanson"
+                >
+                    ❤️ J'aime
+                </button>
+                <button 
+                    class="feedback-btn dislike" 
+                    :class="{ active: currentFeedback === 'dislike' }"
+                    @click="dislikeSong"
+                    title="Je n'aime pas cette chanson"
+                >
+                    👎 Pas intéressé
+                </button>
+            </div>
+
+            <!-- Stats utilisateur -->
+            <div class="user-stats">
+                ❤️ {{ likeCount }} | 👎 {{ dislikeCount }}
             </div>
 
             <!-- CONTRÔLES MUSIQUE -->
@@ -224,7 +307,13 @@
                     radios: { fip: false, fc: false },
                     playbackHistory: [],
                     currentHistoryIndex: -1,
-                    isNavigatingHistory: false
+                    isNavigatingHistory: false,
+                    // 🆕 LIKE/DISLIKE
+                    currentFeedback: null,
+                    userLikes: [],
+                    userDislikes: [],
+                    likeCount: 0,
+                    dislikeCount: 0
                 };
             },
 
@@ -255,11 +344,110 @@
                     if (el) el.textContent = this.formatTime(duration);
                 });
 
+                // 🆕 CHARGER LES LIKES/DISLIKES DU STORAGE
+                this.loadFeedback();
+
                 this.loadPlaybackHistory();
                 await this.fetchNextSongFromAPI(false);
             },
 
             methods: {
+                // 🆕 LIKE SONG
+                async likeSong() {
+                    if (!this.songUrl) return;
+                    
+                    // Si déjà liké, annuler
+                    if (this.currentFeedback === 'like') {
+                        this.currentFeedback = null;
+                        this.userLikes = this.userLikes.filter(url => url !== this.songUrl);
+                    } else {
+                        this.currentFeedback = 'like';
+                        // Retirer du dislike si présent
+                        this.userDislikes = this.userDislikes.filter(url => url !== this.songUrl);
+                        // Ajouter au like
+                        if (!this.userLikes.includes(this.songUrl)) {
+                            this.userLikes.push(this.songUrl);
+                        }
+                    }
+                    
+                    this.saveFeedback();
+                    await this.sendFeedbackToBackend('like');
+                },
+
+                // 🆕 DISLIKE SONG
+                async dislikeSong() {
+                    if (!this.songUrl) return;
+                    
+                    // Si déjà dislické, annuler
+                    if (this.currentFeedback === 'dislike') {
+                        this.currentFeedback = null;
+                        this.userDislikes = this.userDislikes.filter(url => url !== this.songUrl);
+                    } else {
+                        this.currentFeedback = 'dislike';
+                        // Retirer du like si présent
+                        this.userLikes = this.userLikes.filter(url => url !== this.songUrl);
+                        // Ajouter au dislike
+                        if (!this.userDislikes.includes(this.songUrl)) {
+                            this.userDislikes.push(this.songUrl);
+                        }
+                    }
+                    
+                    this.saveFeedback();
+                    await this.sendFeedbackToBackend('dislike');
+                },
+
+                // 🆕 ENVOYER AU BACKEND
+                async sendFeedbackToBackend(feedback) {
+                    try {
+                        await axios.post(
+                            'https://musicabackend.uc.r.appspot.com/api/song-feedback',
+                            {
+                                songUrl: this.songUrl,
+                                songName: this.songName,
+                                feedback: feedback // 'like' ou 'dislike'
+                            },
+                            { withCredentials: true }
+                        );
+                        console.log(`✅ Feedback envoyé: ${feedback}`);
+                    } catch (e) {
+                        console.error('❌ Erreur feedback:', e);
+                        // Pas grave, ça reste local
+                    }
+                },
+
+                // 🆕 SAUVEGARDER EN LOCAL
+                saveFeedback() {
+                    localStorage.setItem('musicaLikes', JSON.stringify(this.userLikes));
+                    localStorage.setItem('musicaDislikes', JSON.stringify(this.userDislikes));
+                    this.likeCount = this.userLikes.length;
+                    this.dislikeCount = this.userDislikes.length;
+                },
+
+                // 🆕 CHARGER DU LOCAL
+                loadFeedback() {
+                    try {
+                        this.userLikes = JSON.parse(localStorage.getItem('musicaLikes') || '[]');
+                        this.userDislikes = JSON.parse(localStorage.getItem('musicaDislikes') || '[]');
+                        this.likeCount = this.userLikes.length;
+                        this.dislikeCount = this.userDislikes.length;
+                    } catch (e) {
+                        console.error('Erreur chargement feedback:', e);
+                        this.userLikes = [];
+                        this.userDislikes = [];
+                    }
+                },
+
+                // 🆕 VÉRIFIER LE FEEDBACK DE LA CHANSON ACTUELLE
+                checkCurrentSongFeedback() {
+                    if (this.userLikes.includes(this.songUrl)) {
+                        this.currentFeedback = 'like';
+                    } else if (this.userDislikes.includes(this.songUrl)) {
+                        this.currentFeedback = 'dislike';
+                    } else {
+                        this.currentFeedback = null;
+                    }
+                },
+
                 formatTime(seconds) {
                     if (!seconds || isNaN(seconds)) return '0:00';
                     const minutes = Math.floor(seconds / 60);
@@ -296,6 +484,9 @@
                         } else {
                             this.currentHistoryIndex = this.playbackHistory.length - 1;
                         }
+
+                        // 🆕 VÉRIFIER LE FEEDBACK
+                        this.checkCurrentSongFeedback();
 
                         this.isPlaying = false;
                         this.isNavigatingHistory = false;
@@ -339,6 +530,9 @@
                     this.isPlaying = false;
                     this.currentHistoryIndex = indexToLoad;
                     this.isNavigatingHistory = true;
+
+                    // 🆕 VÉRIFIER LE FEEDBACK
+                    this.checkCurrentSongFeedback();
                 },
 
                 previousSong() { 

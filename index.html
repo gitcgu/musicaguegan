@@ -1,273 +1,396 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Permissions-Policy" content="interest-cohort=()">
     <title>Musica</title>
-    <script src="https://unpkg.com/vue@3"></script>
-    <script src="https://unpkg.com/axios"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/axios@1.4.0/dist/axios.min.js"></script>
     <script src="https://unpkg.com/wavesurfer.js@6"></script>
     
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Lucida Sans', sans-serif; background: #000; color: #fff; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Lucida Sans', sans-serif;
+            background: #000;
+            color: #fff;
+        }
+
         .container {
             min-height: 100vh;
-            padding: 20px;
-            background-size: cover;
-            background-position: center;
+            padding: 40px 20px;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             text-align: center;
+            transition: background-color 0.3s ease;
         }
-        .song-title { font-size: 4em; margin: 20px 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); max-width: 80%; word-wrap: break-word; }
-        
-        /* 🎵 WAVEFORM CONTAINER - SANS FOND NOIR */
+
+        .song-title {
+            font-size: 3.5em;
+            font-weight: bold;
+            margin: 30px 0;
+            text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.7);
+            max-width: 90%;
+            word-wrap: break-word;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
         #waveform {
             position: relative;
             width: 100%;
             max-width: 1200px;
-            height: 100px;
-            margin-top: 20px;
-            border-radius: 8px;
+            height: 120px;
+            margin: 30px 0;
+            border-radius: 10px;
             overflow: hidden;
-            transition: background 0.3s ease;
+            transition: background-color 0.3s ease;
         }
 
-        /* ⏱️ TEMPS COURANT */
-        #time {
-            position: absolute;
-            left: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            z-index: 10;
-            background: rgba(0, 0, 0, 0.8);
-            color: #fff;
-            padding: 4px 8px;
-            border-radius: 3px;
-            font-size: 12px;
-            font-weight: bold;
-            pointer-events: none;
-        }
-
-        /* ⏱️ DURÉE TOTALE */
+        #time,
         #duration {
             position: absolute;
-            right: 10px;
             top: 50%;
             transform: translateY(-50%);
             z-index: 10;
-            background: rgba(0, 0, 0, 0.8);
+            background: rgba(0, 0, 0, 0.85);
             color: #fff;
-            padding: 4px 8px;
-            border-radius: 3px;
-            font-size: 12px;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 13px;
             font-weight: bold;
             pointer-events: none;
         }
-        
-        .controls { margin-top: 30px; display: flex; justify-content: center; align-items: center; flex-wrap: wrap; }
+
+        #time {
+            left: 15px;
+        }
+
+        #duration {
+            right: 15px;
+        }
+
+        .section-title {
+            font-size: 2em;
+            font-weight: bold;
+            margin: 50px 0 30px 0;
+            letter-spacing: 3px;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 20px;
+            margin: 30px 0;
+        }
+
         .btn {
-            width: 160px; height: 160px; display: flex; justify-content: center; align-items: center;
-            border-radius: 50%; margin: 20px; border: 5px solid; border-color: inherit;
-            font-size: 64px; font-weight: bold; cursor: pointer; transition: all 0.3s ease; text-align: center;
+            width: 140px;
+            height: 140px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 50%;
+            border: 4px solid;
+            font-size: 56px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: none;
         }
-        .btn:hover { transform: scale(1.1); filter: brightness(1.2); }
-        .section-title { font-size: 2.5em; margin: 40px 0 20px; width: 100%; }
+
+        .btn:hover {
+            transform: scale(1.15);
+            filter: brightness(1.3);
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        .radio-section {
+            margin: 30px 0;
+        }
+
+        .footer {
+            margin-top: 60px;
+            font-size: 1.2em;
+            font-style: italic;
+            opacity: 0.8;
+        }
+
+        .hidden-button-link {
+            margin-top: 40px;
+        }
+
         .hidden-button-link a {
-            color: #aaa; text-decoration: none; font-size: 0.8em; border: 1px solid #ccc;
-            padding: 5px 10px; display: inline-block; margin: 10px; opacity: 0.6; transition: opacity 0.3s ease;
+            color: #888;
+            text-decoration: none;
+            font-size: 0.9em;
+            border: 1px solid #666;
+            padding: 8px 15px;
+            display: inline-block;
+            border-radius: 4px;
+            transition: all 0.3s ease;
         }
-        .hidden-button-link a:hover { opacity: 1; color: #333; }
-        .stats { margin-top: 40px; font-size: 1.2em; font-style: italic; width: 100%; }
-        .stats p { color: black; }
+
+        .hidden-button-link a:hover {
+            color: #fff;
+            border-color: #fff;
+            background: rgba(255, 255, 255, 0.1);
+        }
     </style>
 </head>
 <body>
-<div id="app">
-    <div class="container" :style="{backgroundColor:bgColor, color:textColor}">
-        <h1 class="song-title">{{songName || 'Chargement...'}}</h1>
-        
-        <!-- 🎵 WAVEFORM AVEC COULEUR DYNAMIQUE -->
-        <div id="waveform" :style="{backgroundColor: bgColor}">
-            <div id="time">0:00</div>
-            <div id="duration">0:00</div>
-        </div>
+    <div id="app">
+        <div class="container" :style="{ backgroundColor: bgColor, color: textColor }">
+            
+            <!-- TITRE CHANSON -->
+            <h1 class="song-title">{{ songName }}</h1>
 
-        <div class="section-title">M U $ I C</div>
-        <div class="controls">
-            <button class="btn" :style="{backgroundColor:textColor,color:bgColor}" @click="previousSong">&lt;&lt;</button>
-            <button class="btn" :style="{backgroundColor:textColor,color:bgColor}" @click="togglePlay">
-                {{ isPlaying ? '⏸' : '▶' }}
-            </button>
-            <button class="btn" :style="{backgroundColor:textColor,color:bgColor}" @click="replaySong">↻</button>
-            <button class="btn" :style="{backgroundColor:textColor,color:bgColor}" @click="handleNextClick">&gt;&gt;</button>
-        </div>
+            <!-- WAVEFORM -->
+            <div id="waveform" :style="{ backgroundColor: bgColor }">
+                <div id="time">0:00</div>
+                <div id="duration">0:00</div>
+            </div>
 
-        <div class="section-title">R A D I O</div>
-        <div>
-            <audio ref="radioFip" src="https://direct.fipradio.fr/live/fip-midfi.mp3"></audio>
-            <button class="btn" :style="{backgroundColor:textColor,color:bgColor,fontSize:'52px'}" @click="toggleRadio('fip')">
-                {{ radios.fip ? '⏸' : '▶' }} FIP
-            </button>
-        </div>
-        <div>
-            <audio ref="radioCulture" src="https://direct.franceculture.fr/live/franceculture-midfi.mp3"></audio>
-            <button class="btn" :style="{backgroundColor:textColor,color:bgColor,fontSize:'35px'}" @click="toggleRadio('fc')">
-                {{ radios.fc ? '⏸' : '▶' }} France Culture
-            </button>
-        </div>
+            <!-- CONTRÔLES MUSIQUE -->
+            <div class="section-title">♫ M U $ I C ♫</div>
+            <div class="controls">
+                <button class="btn" :style="{ backgroundColor: textColor, color: bgColor }" @click="previousSong">
+                    ⏮
+                </button>
+                <button class="btn" :style="{ backgroundColor: textColor, color: bgColor }" @click="togglePlay">
+                    {{ isPlaying ? '⏸' : '▶' }}
+                </button>
+                <button class="btn" :style="{ backgroundColor: textColor, color: bgColor }" @click="replaySong">
+                    ↻
+                </button>
+                <button class="btn" :style="{ backgroundColor: textColor, color: bgColor }" @click="handleNextClick">
+                    ⏭
+                </button>
+            </div>
 
-        <div class="hidden-button-link">
-            <a href="/page-protegee">Accès fonction spéciale</a>
-        </div>
+            <!-- RADIOS -->
+            <div class="section-title">📻 R A D I O 📻</div>
+            <div class="controls">
+                <audio ref="radioFip" src="https://direct.fipradio.fr/live/fip-midfi.mp3"></audio>
+                <button class="btn" :style="{ backgroundColor: textColor, color: bgColor, fontSize: '40px' }" @click="toggleRadio('fip')">
+                    {{ radios.fip ? '⏸' : '▶' }} FIP
+                </button>
+                
+                <audio ref="radioCulture" src="https://direct.franceculture.fr/live/franceculture-midfi.mp3"></audio>
+                <button class="btn" :style="{ backgroundColor: textColor, color: bgColor, fontSize: '30px' }" @click="toggleRadio('fc')">
+                    {{ radios.fc ? '⏸' : '▶' }} France Culture
+                </button>
+            </div>
 
-        <div class="stats">
-            <p>cé mizik an nou ki pli bel ®</p>
+            <!-- LIEN SPÉCIAL -->
+            <div class="hidden-button-link">
+                <a href="/page-protegee">🔒 Accès fonction spéciale</a>
+            </div>
+
+            <!-- FOOTER -->
+            <div class="footer">
+                <p>🎶 cé mizik an nou ki pli bel 🎶</p>
+            </div>
         </div>
     </div>
-</div>
 
-<script>
-const { createApp } = Vue;
+    <script>
+        const { createApp } = Vue;
 
-createApp({
-    data() {
-        return {
-            songName: '',
-            songUrl: '',
-            bgColor: '#000',
-            textColor: '#FFF',
-            isPlaying: false,
-            wavesurfer: null,
-            radios: { fip: false, fc: false },
-            playbackHistory: [],
-            currentHistoryIndex: -1,
-            isNavigatingHistory: false
-        };
-    },
+        createApp({
+            data() {
+                return {
+                    songName: 'Chargement...',
+                    songUrl: '',
+                    bgColor: '#000',
+                    textColor: '#FFF',
+                    isPlaying: false,
+                    wavesurfer: null,
+                    radios: { fip: false, fc: false },
+                    playbackHistory: [],
+                    currentHistoryIndex: -1,
+                    isNavigatingHistory: false
+                };
+            },
 
-    async mounted() {
-        // 🎵 INITIALISER WAVESURFER
-        this.wavesurfer = WaveSurfer.create({
-            container: '#waveform',
-            waveColor: 'rgb(200, 0, 200)',
-            progressColor: 'rgb(100, 0, 100)',
-            barWidth: 2,
-            barGap: 1,
-            barRadius: 2,
-            height: 100
-        });
+            async mounted() {
+                // 🎵 INITIALISER WAVESURFER
+                this.wavesurfer = WaveSurfer.create({
+                    container: '#waveform',
+                    waveColor: 'rgb(200, 100, 200)',
+                    progressColor: 'rgb(255, 100, 100)',
+                    barWidth: 2,
+                    barGap: 1,
+                    barRadius: 2,
+                    height: 120
+                });
 
-        // Événements basiques
-        this.wavesurfer.on('play', () => { this.isPlaying = true; });
-        this.wavesurfer.on('pause', () => { this.isPlaying = false; });
-        this.wavesurfer.on('finish', () => this.handleSongEnd());
+                this.wavesurfer.on('play', () => { this.isPlaying = true; });
+                this.wavesurfer.on('pause', () => { this.isPlaying = false; });
+                this.wavesurfer.on('finish', () => this.handleSongEnd());
 
-        // ⏱️ ÉVÉNEMENT TEMPS COURANT
-        this.wavesurfer.on('timeupdate', (currentTime) => {
-            const timeEl = document.querySelector('#time');
-            if (timeEl) {
-                timeEl.textContent = this.formatTime(currentTime);
-            }
-        });
+                this.wavesurfer.on('timeupdate', (currentTime) => {
+                    const el = document.querySelector('#time');
+                    if (el) el.textContent = this.formatTime(currentTime);
+                });
 
-        // ⏱️ ÉVÉNEMENT DURÉE TOTALE
-        this.wavesurfer.on('ready', () => {
-            const duration = this.wavesurfer.getDuration();
-            const durationEl = document.querySelector('#duration');
-            if (durationEl) {
-                durationEl.textContent = this.formatTime(duration);
-            }
-        });
+                this.wavesurfer.on('ready', () => {
+                    const duration = this.wavesurfer.getDuration();
+                    const el = document.querySelector('#duration');
+                    if (el) el.textContent = this.formatTime(duration);
+                });
 
-        this.loadPlaybackHistory();
-        await this.fetchNextSongFromAPI(false);
-    },
+                this.loadPlaybackHistory();
+                await this.fetchNextSongFromAPI(false);
+            },
 
-    methods: {
-        // ⏱️ FORMATER LE TEMPS (MM:SS)
-        formatTime(seconds) {
-            if (!seconds || isNaN(seconds)) return '0:00';
-            const minutes = Math.floor(seconds / 60);
-            const secs = Math.round(seconds % 60);
-            const paddedSeconds = `0${secs}`.slice(-2);
-            return `$${minutes}:$${paddedSeconds}`;
-        },
+            methods: {
+                formatTime(seconds) {
+                    if (!seconds || isNaN(seconds)) return '0:00';
+                    const minutes = Math.floor(seconds / 60);
+                    const secs = Math.round(seconds % 60);
+                    const paddedSeconds = `0${secs}`.slice(-2);
+                    return `${minutes}:${paddedSeconds}`;
+                },
 
-        async fetchNextSongFromAPI(increment = true) {
-            try {
-                const r = await axios.get('https://musicabackend.uc.r.appspot.com/api/next-song', { withCredentials: true });
-                const newSongData = { name: r.data.songName, url: r.data.url };
-                
-                if (!newSongData.url) { 
-                    alert("Chanson indisponible."); 
-                    return; 
+                async fetchNextSongFromAPI(increment = true) {
+                    try {
+                        const r = await axios.get('https://musicabackend.uc.r.appspot.com/api/next-song', { withCredentials: true });
+                        const newSongData = { name: r.data.songName, url: r.data.url };
+                        
+                        if (!newSongData.url) { 
+                            alert("Chanson indisponible."); 
+                            return; 
+                        }
+
+                        this.songName = newSongData.name;
+                        this.songUrl = newSongData.url;
+                        this.bgColor = r.data.color || '#000';
+                        this.textColor = r.data.textColor || '#FFF';
+
+                        this.wavesurfer.load(this.songUrl);
+                        
+                        document.querySelector('#time').textContent = '0:00';
+                        document.querySelector('#duration').textContent = '0:00';
+
+                        if (this.playbackHistory.length === 0 || this.playbackHistory[this.playbackHistory.length - 1].url !== this.songUrl) {
+                            this.playbackHistory.push(newSongData);
+                            if (this.playbackHistory.length > 20) this.playbackHistory.shift();
+                            this.currentHistoryIndex = this.playbackHistory.length - 1;
+                            this.savePlaybackHistory();
+                        } else {
+                            this.currentHistoryIndex = this.playbackHistory.length - 1;
+                        }
+
+                        this.isPlaying = false;
+                        this.isNavigatingHistory = false;
+
+                    } catch(e) {
+                        console.error("Erreur:", e);
+                        alert("Impossible de charger la chanson depuis l'API.");
+                    }
+                },
+
+                togglePlay() {
+                    if (!this.songUrl) { alert("Aucune chanson chargée."); return; }
+                    this.wavesurfer.playPause();
+                },
+
+                handleNextClick() {
+                    if (this.isNavigatingHistory) this.nextSongFromHistory();
+                    else this.fetchNextSongFromAPI(true);
+                },
+
+                handleSongEnd() {
+                    if (this.isNavigatingHistory) this.nextSongFromHistory();
+                    else this.fetchNextSongFromAPI(false);
+                },
+
+                loadSongFromHistory(indexToLoad) {
+                    if (indexToLoad < 0 || indexToLoad >= this.playbackHistory.length) { alert("Pas de chanson."); return; }
+                    const songData = this.playbackHistory[indexToLoad];
+                    if (!songData.url) { alert("Chanson indisponible."); return; }
+                    
+                    this.songUrl = songData.url;
+                    this.songName = songData.name;
+                    this.bgColor = '#333';
+                    this.textColor = '#EEE';
+                    
+                    this.wavesurfer.load(songData.url);
+                    
+                    document.querySelector('#time').textContent = '0:00';
+                    document.querySelector('#duration').textContent = '0:00';
+                    
+                    this.isPlaying = false;
+                    this.currentHistoryIndex = indexToLoad;
+                    this.isNavigatingHistory = true;
+                },
+
+                previousSong() { 
+                    if (this.currentHistoryIndex > 0) this.loadSongFromHistory(this.currentHistoryIndex - 1); 
+                    else alert("Pas de chanson précédente."); 
+                },
+
+                nextSongFromHistory() { 
+                    if (this.currentHistoryIndex < this.playbackHistory.length - 1) 
+                        this.loadSongFromHistory(this.currentHistoryIndex + 1); 
+                    else this.fetchNextSongFromAPI(true); 
+                },
+
+                replaySong() { 
+                    if (this.songUrl) {
+                        this.wavesurfer.seekTo(0);
+                        this.wavesurfer.play();
+                    } else alert("Aucune chanson à rejouer."); 
+                },
+
+                toggleRadio(n) {
+                    const refs = {fip: 'radioFip', fc: 'radioCulture'}; 
+                    const p = this.$refs[refs[n]];
+                    if(p.paused) p.play().then(() => this.radios[n] = true).catch(() => alert(`Impossible de lire ${n}.`));
+                    else { p.pause(); this.radios[n] = false; }
+                },
+
+                savePlaybackHistory() { 
+                    try{ localStorage.setItem('musicagueganHistory', JSON.stringify(this.playbackHistory)); } 
+                    catch(e){ console.error(e); } 
+                },
+
+                loadPlaybackHistory() {
+                    try {
+                        const history = JSON.parse(localStorage.getItem('musicagueganHistory') || '[]');
+                        this.playbackHistory = history.filter(item => item && item.url);
+                        if(this.playbackHistory.length > 0) {
+                            this.currentHistoryIndex = this.playbackHistory.length - 1;
+                            this.loadSongFromHistory(this.currentHistoryIndex);
+                        } else { 
+                            this.currentHistoryIndex = -1; 
+                            this.isNavigatingHistory = false; 
+                        }
+                    } catch(e){ 
+                        console.error(e); 
+                        this.playbackHistory = []; 
+                        this.currentHistoryIndex = -1; 
+                        this.isNavigatingHistory = false; 
+                    }
                 }
-
-                this.songName = newSongData.name;
-                this.songUrl = newSongData.url;
-                this.bgColor = r.data.color || '#000';
-                this.textColor = r.data.textColor || '#FFF';
-
-                // 🎵 CHARGER LA CHANSON
-                this.wavesurfer.load(this.songUrl);
-                
-                // Réinitialiser le temps
-                document.querySelector('#time').textContent = '0:00';
-                document.querySelector('#duration').textContent = '0:00';
-
-                if (this.playbackHistory.length === 0 || this.playbackHistory[this.playbackHistory.length - 1].url !== this.songUrl) {
-                    this.playbackHistory.push(newSongData);
-                    if (this.playbackHistory.length > 20) this.playbackHistory.shift();
-                    this.currentHistoryIndex = this.playbackHistory.length - 1;
-                    this.savePlaybackHistory();
-                } else {
-                    this.currentHistoryIndex = this.playbackHistory.length - 1;
-                }
-
-                this.isPlaying = false;
-                this.isNavigatingHistory = false;
-
-            } catch(e) {
-                console.error("Erreur:", e);
-                alert("Impossible de charger la chanson depuis l'API.");
             }
-        },
-
-        togglePlay() {
-            if (!this.songUrl) { alert("Aucune chanson chargée."); return; }
-            this.wavesurfer.playPause();
-        },
-
-        handleNextClick() {
-            if (this.isNavigatingHistory) this.nextSongFromHistory();
-            else this.fetchNextSongFromAPI(true);
-        },
-
-        handleSongEnd() {
-            if (this.isNavigatingHistory) this.nextSongFromHistory();
-            else this.fetchNextSongFromAPI(false);
-        },
-
-        loadSongFromHistory(indexToLoad) {
-            if (indexToLoad < 0 || indexToLoad >= this.playbackHistory.length) { alert("Pas de chanson."); return; }
-            const songData = this.playbackHistory[indexToLoad];
-            if (!songData.url) { alert("Chanson indisponible."); return; }
-            
-            this.songUrl = songData.url;
-            this.songName = songData.name;
-            this.bgColor = '#333';
-            this.textColor = '#EEE';
-            
-            this.wavesurfer.load(songData.url);
-            
-            // Réinitialiser le temps
-            document.querySelector('#time').textContent = '0:00';
-            document.querySelector('#duration').textContent = '0:00';
-            
-            this.isPlaying = false;
-            this.currentHistoryIndex = indexToLoad;
-            this.isNavigatingHistory
+        }).mount('#app');
+    </script>
+</body>
+</html>

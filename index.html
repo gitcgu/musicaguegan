@@ -24,14 +24,48 @@
         }
         .song-title { font-size: 4em; margin: 20px 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); max-width: 80%; word-wrap: break-word; }
         
+        /* 🎵 WAVEFORM CONTAINER - SANS FOND NOIR */
         #waveform {
+            position: relative;
             width: 100%;
             max-width: 1200px;
             height: 100px;
             margin-top: 20px;
             border-radius: 8px;
             overflow: hidden;
-            background: #222;
+            transition: background 0.3s ease;
+        }
+
+        /* ⏱️ TEMPS COURANT */
+        #time {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+            pointer-events: none;
+        }
+
+        /* ⏱️ DURÉE TOTALE */
+        #duration {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            z-index: 10;
+            background: rgba(0, 0, 0, 0.8);
+            color: #fff;
+            padding: 4px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+            pointer-events: none;
         }
         
         .controls { margin-top: 30px; display: flex; justify-content: center; align-items: center; flex-wrap: wrap; }
@@ -56,8 +90,11 @@
     <div class="container" :style="{backgroundColor:bgColor, color:textColor}">
         <h1 class="song-title">{{songName || 'Chargement...'}}</h1>
         
-        <!-- WAVE SIMPLE -->
-        <div id="waveform"></div>
+        <!-- 🎵 WAVEFORM AVEC COULEUR DYNAMIQUE -->
+        <div id="waveform" :style="{backgroundColor: bgColor}">
+            <div id="time">0:00</div>
+            <div id="duration">0:00</div>
+        </div>
 
         <div class="section-title">M U $ I C</div>
         <div class="controls">
@@ -113,7 +150,7 @@ createApp({
     },
 
     async mounted() {
-        // 🎵 INITIALISER WAVESURFER - SIMPLE ET DIRECT
+        // 🎵 INITIALISER WAVESURFER
         this.wavesurfer = WaveSurfer.create({
             container: '#waveform',
             waveColor: 'rgb(200, 0, 200)',
@@ -129,11 +166,37 @@ createApp({
         this.wavesurfer.on('pause', () => { this.isPlaying = false; });
         this.wavesurfer.on('finish', () => this.handleSongEnd());
 
+        // ⏱️ ÉVÉNEMENT TEMPS COURANT
+        this.wavesurfer.on('timeupdate', (currentTime) => {
+            const timeEl = document.querySelector('#time');
+            if (timeEl) {
+                timeEl.textContent = this.formatTime(currentTime);
+            }
+        });
+
+        // ⏱️ ÉVÉNEMENT DURÉE TOTALE
+        this.wavesurfer.on('ready', () => {
+            const duration = this.wavesurfer.getDuration();
+            const durationEl = document.querySelector('#duration');
+            if (durationEl) {
+                durationEl.textContent = this.formatTime(duration);
+            }
+        });
+
         this.loadPlaybackHistory();
         await this.fetchNextSongFromAPI(false);
     },
 
     methods: {
+        // ⏱️ FORMATER LE TEMPS (MM:SS)
+        formatTime(seconds) {
+            if (!seconds || isNaN(seconds)) return '0:00';
+            const minutes = Math.floor(seconds / 60);
+            const secs = Math.round(seconds % 60);
+            const paddedSeconds = `0${secs}`.slice(-2);
+            return `$${minutes}:$${paddedSeconds}`;
+        },
+
         async fetchNextSongFromAPI(increment = true) {
             try {
                 const r = await axios.get('https://musicabackend.uc.r.appspot.com/api/next-song', { withCredentials: true });
@@ -151,6 +214,10 @@ createApp({
 
                 // 🎵 CHARGER LA CHANSON
                 this.wavesurfer.load(this.songUrl);
+                
+                // Réinitialiser le temps
+                document.querySelector('#time').textContent = '0:00';
+                document.querySelector('#duration').textContent = '0:00';
 
                 if (this.playbackHistory.length === 0 || this.playbackHistory[this.playbackHistory.length - 1].url !== this.songUrl) {
                     this.playbackHistory.push(newSongData);
@@ -197,61 +264,10 @@ createApp({
             
             this.wavesurfer.load(songData.url);
             
+            // Réinitialiser le temps
+            document.querySelector('#time').textContent = '0:00';
+            document.querySelector('#duration').textContent = '0:00';
+            
             this.isPlaying = false;
             this.currentHistoryIndex = indexToLoad;
-            this.isNavigatingHistory = true;
-        },
-
-        previousSong() { 
-            if (this.currentHistoryIndex > 0) this.loadSongFromHistory(this.currentHistoryIndex - 1); 
-            else alert("Pas de chanson précédente."); 
-        },
-
-        nextSongFromHistory() { 
-            if (this.currentHistoryIndex < this.playbackHistory.length - 1) 
-                this.loadSongFromHistory(this.currentHistoryIndex + 1); 
-            else this.fetchNextSongFromAPI(true); 
-        },
-
-        replaySong() { 
-            if (this.songUrl) {
-                this.wavesurfer.seekTo(0);
-                this.wavesurfer.play();
-            } else alert("Aucune chanson à rejouer."); 
-        },
-
-        toggleRadio(n) {
-            const refs = {fip: 'radioFip', fc: 'radioCulture'}; 
-            const p = this.$refs[refs[n]];
-            if(p.paused) p.play().then(() => this.radios[n] = true).catch(() => alert(`Impossible de lire ${n}.`));
-            else { p.pause(); this.radios[n] = false; }
-        },
-
-        savePlaybackHistory() { 
-            try{ localStorage.setItem('musicagueganHistory', JSON.stringify(this.playbackHistory)); } 
-            catch(e){ console.error(e); } 
-        },
-
-        loadPlaybackHistory() {
-            try {
-                const history = JSON.parse(localStorage.getItem('musicagueganHistory') || '[]');
-                this.playbackHistory = history.filter(item => item && item.url);
-                if(this.playbackHistory.length > 0) {
-                    this.currentHistoryIndex = this.playbackHistory.length - 1;
-                    this.loadSongFromHistory(this.currentHistoryIndex);
-                } else { 
-                    this.currentHistoryIndex = -1; 
-                    this.isNavigatingHistory = false; 
-                }
-            } catch(e){ 
-                console.error(e); 
-                this.playbackHistory = []; 
-                this.currentHistoryIndex = -1; 
-                this.isNavigatingHistory = false; 
-            }
-        }
-    }
-}).mount('#app');
-</script>
-</body>
-</html>
+            this.isNavigatingHistory

@@ -25,60 +25,22 @@
         .song-title { font-size: 4em; margin: 20px 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); max-width: 80%; word-wrap: break-word; }
         
         #waveform {
-            cursor: pointer;
-            position: relative;
             width: 100%;
             max-width: 1200px;
             height: 100px;
             margin-top: 20px;
             border-radius: 8px;
             overflow: hidden;
+            background: #222;
         }
-        
-        #hover {
-            position: absolute;
-            left: 0;
-            top: 0;
-            z-index: 10;
-            pointer-events: none;
-            height: 100%;
-            width: 0;
-            mix-blend-mode: overlay;
-            background: rgba(255, 255, 255, 0.5);
-            opacity: 0;
-            transition: opacity 0.2s ease;
-        }
-        
-        #waveform:hover #hover {
-            opacity: 1;
-        }
-        
-        #time, #duration {
-            position: absolute;
-            z-index: 11;
-            top: 50%;
-            margin-top: -10px;
-            transform: translateY(-50%);
-            font-size: 12px;
-            background: rgba(0, 0, 0, 0.75);
-            padding: 4px 8px;
-            border-radius: 3px;
-            color: #ddd;
-            font-weight: bold;
-        }
-        
-        #time { left: 10px; }
-        #duration { right: 10px; }
         
         .controls { margin-top: 30px; display: flex; justify-content: center; align-items: center; flex-wrap: wrap; }
         .btn {
             width: 160px; height: 160px; display: flex; justify-content: center; align-items: center;
             border-radius: 50%; margin: 20px; border: 5px solid; border-color: inherit;
             font-size: 64px; font-weight: bold; cursor: pointer; transition: all 0.3s ease; text-align: center;
-            background: none;
         }
         .btn:hover { transform: scale(1.1); filter: brightness(1.2); }
-        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .section-title { font-size: 2.5em; margin: 40px 0 20px; width: 100%; }
         .hidden-button-link a {
             color: #aaa; text-decoration: none; font-size: 0.8em; border: 1px solid #ccc;
@@ -94,15 +56,8 @@
     <div class="container" :style="{backgroundColor:bgColor, color:textColor}">
         <h1 class="song-title">{{songName || 'Chargement...'}}</h1>
         
-        <!-- Audio caché (lecteur réel) -->
-        <audio ref="player" style="display:none;"></audio>
-        
-        <!-- Waveform SoundCloud-style -->
-        <div id="waveform">
-            <div id="time">0:00</div>
-            <div id="duration">0:00</div>
-            <div id="hover"></div>
-        </div>
+        <!-- WAVE SIMPLE -->
+        <div id="waveform"></div>
 
         <div class="section-title">M U $ I C</div>
         <div class="controls">
@@ -158,80 +113,27 @@ createApp({
     },
 
     async mounted() {
-        // 🎵 CRÉER GRADIENT SOUNDCLOUD
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
-        canvas.width = 1;
-        canvas.height = 130;
-
-        const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height * 1.35);
-        gradient.addColorStop(0, '#656666');
-        gradient.addColorStop((canvas.height * 0.7) / canvas.height, '#656666');
-        gradient.addColorStop((canvas.height * 0.7 + 1) / canvas.height, '#ffffff');
-        gradient.addColorStop((canvas.height * 0.7 + 2) / canvas.height, '#ffffff');
-        gradient.addColorStop((canvas.height * 0.7 + 3) / canvas.height, '#B1B1B1');
-        gradient.addColorStop(1, '#B1B1B1');
-
-        const progressGradient = ctx.createLinearGradient(0, 0, 0, canvas.height * 1.35);
-        progressGradient.addColorStop(0, '#EE772F');
-        progressGradient.addColorStop((canvas.height * 0.7) / canvas.height, '#EB4926');
-        progressGradient.addColorStop((canvas.height * 0.7 + 1) / canvas.height, '#ffffff');
-        progressGradient.addColorStop((canvas.height * 0.7 + 2) / canvas.height, '#ffffff');
-        progressGradient.addColorStop((canvas.height * 0.7 + 3) / canvas.height, '#F6B094');
-        progressGradient.addColorStop(1, '#F6B094');
-
-        // 🎵 CRÉER WAVESURFER AVEC L'AUDIO HTML
+        // 🎵 INITIALISER WAVESURFER - SIMPLE ET DIRECT
         this.wavesurfer = WaveSurfer.create({
             container: '#waveform',
-            waveColor: gradient,
-            progressColor: progressGradient,
-            barWidth: 3,
-            barGap: 2,
+            waveColor: 'rgb(200, 0, 200)',
+            progressColor: 'rgb(100, 0, 100)',
+            barWidth: 2,
+            barGap: 1,
             barRadius: 2,
-            height: 100,
-            normalize: true,
-            media: this.$refs.player  // 👈 IMPORTANT: Utiliser l'audio HTML
+            height: 100
         });
 
-        // 🎵 ÉVÉNEMENTS
+        // Événements basiques
         this.wavesurfer.on('play', () => { this.isPlaying = true; });
         this.wavesurfer.on('pause', () => { this.isPlaying = false; });
         this.wavesurfer.on('finish', () => this.handleSongEnd());
-
-        this.wavesurfer.on('timeupdate', (currentTime) => {
-            document.querySelector('#time').textContent = this.formatTime(currentTime);
-        });
-
-        this.wavesurfer.on('ready', () => {
-            const duration = this.$refs.player.duration;
-            document.querySelector('#duration').textContent = this.formatTime(duration);
-        });
-
-        // Hover effect
-        const waveform = document.querySelector('#waveform');
-        const hover = document.querySelector('#hover');
-        waveform.addEventListener('pointermove', (e) => {
-            hover.style.width = `${e.offsetX}px`;
-        });
-
-        // Click to play/pause
-        this.wavesurfer.on('interaction', () => {
-            this.wavesurfer.playPause();
-        });
 
         this.loadPlaybackHistory();
         await this.fetchNextSongFromAPI(false);
     },
 
     methods: {
-        formatTime(seconds) {
-            if (!seconds || isNaN(seconds)) return '0:00';
-            const minutes = Math.floor(seconds / 60);
-            const secondsRemainder = Math.round(seconds) % 60;
-            const paddedSeconds = `0${secondsRemainder}`.slice(-2);
-            return `${minutes}:${paddedSeconds}`;
-        },
-
         async fetchNextSongFromAPI(increment = true) {
             try {
                 const r = await axios.get('https://musicabackend.uc.r.appspot.com/api/next-song', { withCredentials: true });
@@ -247,12 +149,8 @@ createApp({
                 this.bgColor = r.data.color || '#000';
                 this.textColor = r.data.textColor || '#FFF';
 
-                // 🎵 CHARGER DANS L'AUDIO HTML
-                this.$refs.player.src = newSongData.url;
-                this.$refs.player.load();
-
-                document.querySelector('#time').textContent = '0:00';
-                document.querySelector('#duration').textContent = '0:00';
+                // 🎵 CHARGER LA CHANSON
+                this.wavesurfer.load(this.songUrl);
 
                 if (this.playbackHistory.length === 0 || this.playbackHistory[this.playbackHistory.length - 1].url !== this.songUrl) {
                     this.playbackHistory.push(newSongData);
@@ -267,7 +165,7 @@ createApp({
                 this.isNavigatingHistory = false;
 
             } catch(e) {
-                console.error("❌ Erreur:", e);
+                console.error("Erreur:", e);
                 alert("Impossible de charger la chanson depuis l'API.");
             }
         },
@@ -297,11 +195,7 @@ createApp({
             this.bgColor = '#333';
             this.textColor = '#EEE';
             
-            this.$refs.player.src = songData.url;
-            this.$refs.player.load();
-            
-            document.querySelector('#time').textContent = '0:00';
-            document.querySelector('#duration').textContent = '0:00';
+            this.wavesurfer.load(songData.url);
             
             this.isPlaying = false;
             this.currentHistoryIndex = indexToLoad;
@@ -321,7 +215,7 @@ createApp({
 
         replaySong() { 
             if (this.songUrl) {
-                this.$refs.player.currentTime = 0;
+                this.wavesurfer.seekTo(0);
                 this.wavesurfer.play();
             } else alert("Aucune chanson à rejouer."); 
         },

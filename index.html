@@ -148,8 +148,8 @@
         }
 
         .btn {
-            width: 140px;
-            height: 140px;
+            width: 75px;
+            height: 75px;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -209,54 +209,7 @@
             font-size: 0.9em;
             opacity: 0.7;
         }
-        /* 🆕 MOBILE - Réduire de 25% */
-        @media (max-width: 768px) {
-            .song-title {
-                font-size: 2.5em;
-                margin: 20px 0;
-                min-height: 60px;
-            }
-
-            #waveform {
-                height: 90px;
-                margin: 20px 0;
-            }
-
-            .feedback-buttons {
-                gap: 15px;
-                margin: 15px 0;
-            }
-
-            .feedback-btn {
-                padding: 9px 18px;
-                font-size: 13px;
-            }
-
-            .section-title {
-                font-size: 1.5em;
-                margin: 35px 0 20px 0;
-            }
-
-            .controls {
-                gap: 15px;
-                margin: 20px 0;
-            }
-
-            .btn {
-                width: 105px;
-                height: 105px;
-                font-size: 42px;
-                border: 3px solid;
-            }
-
-            .footer {
-                margin-top: 40px;
-                font-size: 0.9em;
-            }
-
-            .user-stats {
-                font-size: 0.75em;
-            }
+ 
         
     </style>
 </head>
@@ -273,6 +226,22 @@
                 <div id="duration">0:00</div>
             </div>
 
+
+            <!-- CONTRÔLES MUSIQUE -->
+            <div class="controls">
+                <button class="btn" :style="{ backgroundColor: textColor, color: bgColor }" @click="previousSong">
+                    ⏮
+                </button>
+                <button class="btn" :style="{ backgroundColor: textColor, color: bgColor }" @click="togglePlay">
+                    {{ isPlaying ? '⏸' : '▶' }}
+                </button>
+                <button class="btn" :style="{ backgroundColor: textColor, color: bgColor }" @click="replaySong">
+                    ↻
+                </button>
+                <button class="btn" :style="{ backgroundColor: textColor, color: bgColor }" @click="handleNextClick">
+                    ⏭
+                </button>
+            </div>
             <!-- 🆕 LIKE/DISLIKE BUTTONS -->
             <div class="feedback-buttons">
                 <button 
@@ -298,33 +267,16 @@
                 ❤️ {{ likeCount }} | 👎 {{ dislikeCount }}
             </div>
 
-            <!-- CONTRÔLES MUSIQUE -->
-            <div class="section-title">♫ M U $ I C ♫</div>
-            <div class="controls">
-                <button class="btn" :style="{ backgroundColor: textColor, color: bgColor }" @click="previousSong">
-                    ⏮
-                </button>
-                <button class="btn" :style="{ backgroundColor: textColor, color: bgColor }" @click="togglePlay">
-                    {{ isPlaying ? '⏸' : '▶' }}
-                </button>
-                <button class="btn" :style="{ backgroundColor: textColor, color: bgColor }" @click="replaySong">
-                    ↻
-                </button>
-                <button class="btn" :style="{ backgroundColor: textColor, color: bgColor }" @click="handleNextClick">
-                    ⏭
-                </button>
-            </div>
-
             <!-- RADIOS -->
             <div class="section-title">📻 R A D I O 📻</div>
             <div class="controls">
                 <audio ref="radioFip" src="https://direct.fipradio.fr/live/fip-midfi.mp3"></audio>
-                <button class="btn" :style="{ backgroundColor: textColor, color: bgColor, fontSize: '40px' }" @click="toggleRadio('fip')">
+                <button class="btn" :style="{ backgroundColor: textColor, color: bgColor, fontSize: '20px' }" @click="toggleRadio('fip')">
                     {{ radios.fip ? '⏸' : '▶' }} FIP
                 </button>
                 
                 <audio ref="radioCulture" src="https://direct.franceculture.fr/live/franceculture-midfi.mp3"></audio>
-                <button class="btn" :style="{ backgroundColor: textColor, color: bgColor, fontSize: '30px' }" @click="toggleRadio('fc')">
+                <button class="btn" :style="{ backgroundColor: textColor, color: bgColor, fontSize: '10px' }" @click="toggleRadio('fc')">
                     {{ radios.fc ? '⏸' : '▶' }} France Culture
                 </button>
             </div>

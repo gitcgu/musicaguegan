@@ -6,6 +6,9 @@
     <title>Musica</title>
     <script src="https://unpkg.com/vue@3"></script>
     <script src="https://unpkg.com/axios"></script>
+    <!-- 🎵 WAVESURFER CDN -->
+    <script src="https://unpkg.com/wavesurfer.js@6"></script>
+    
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Lucida Sans', sans-serif; background: #000; color: #fff; }
@@ -21,7 +24,16 @@
             text-align: center;
         }
         .song-title { font-size: 4em; margin: 20px 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); max-width: 80%; word-wrap: break-word; }
-        audio { width: 100%; max-width: 1200px; height: 100px; margin-top: 20px; }
+        
+        #waveform {
+            width: 100%;
+            max-width: 1200px;
+            height: 100px;
+            margin-top: 20px;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
         .controls { margin-top: 30px; display: flex; justify-content: center; align-items: center; flex-wrap: wrap; }
         .btn {
             width: 160px; height: 160px; display: flex; justify-content: center; align-items: center;
@@ -41,16 +53,15 @@
 </head>
 <body>
 <div id="app">
-    <div class="container" :style="{backgroundColor:bgColor, /* backgroundImage:bgImage, */ color:textColor}">
-
+    <div class="container" :style="{backgroundColor:bgColor, color:textColor}">
         <h1 class="song-title">{{songName || 'Chargement...'}}</h1>
-        <audio ref="player" :src="songUrl" controls @ended="handleSongEnd"></audio>
+        <div id="waveform"></div>
 
         <div class="section-title">M U $ I C</div>
         <div class="controls">
             <button class="btn" :style="{backgroundColor:textColor,color:bgColor}" @click="previousSong">&lt;&lt;</button>
             <button class="btn" :style="{backgroundColor:textColor,color:bgColor}" @click="togglePlay">
-                {{ player.paused ? '▶' : '⏸' }}
+                {{ isPlaying ? '⏸' : '▶' }}
             </button>
             <button class="btn" :style="{backgroundColor:textColor,color:bgColor}" @click="replaySong">↻</button>
             <button class="btn" :style="{backgroundColor:textColor,color:bgColor}" @click="handleNextClick">&gt;&gt;</button>
@@ -90,39 +101,35 @@ createApp({
             songUrl: '',
             bgColor: '#000',
             textColor: '#FFF',
-            bgImage: '',
-            player: { paused: false },
+            isPlaying: false,
+            wavesurfer: null,
             radios: { fip: false, fc: false },
             playbackHistory: [],
             currentHistoryIndex: -1,
             isNavigatingHistory: false
         };
     },
-watch: {
-  songUrl() {
-    this.$nextTick(() => {
-      const p = this.$refs.player;
-      if (!p) return;
 
-      p.load();
-      p.play()
-        .then(() => {
-          this.player.paused = false;
-        })
-        .catch(() => {
-          // autoplay bloqué tant que l'utilisateur n'a pas cliqué une fois
-        });
-    });
-  }
-},
-
-    
     async mounted() {
+        // 🎵 WAVESURFER CRÉÉ AUTOMATIQUEMENT (CDN chargé)
+        this.wavesurfer = WaveSurfer.create({
+            container: '#waveform',
+            waveColor: 'rgb(200, 0, 200)',
+            progressColor: 'rgb(100, 0, 100)',
+            barWidth: 2,
+            barGap: 1,
+            barRadius: 2,
+            height: 100
+        });
+
+        this.wavesurfer.on('finish', () => this.handleSongEnd());
+        this.wavesurfer.on('play', () => this.isPlaying = true);
+        this.wavesurfer.on('pause', () => this.isPlaying = false);
+
         this.loadPlaybackHistory();
         await this.fetchNextSongFromAPI(false);
     },
 
-    
     methods: {
         async fetchNextSongFromAPI(increment = true) {
             try {
@@ -134,7 +141,8 @@ watch: {
                 this.songUrl = newSongData.url;
                 this.bgColor = r.data.color || '#000';
                 this.textColor = r.data.textColor || '#FFF';
-               // this.bgImage = r.data.cover ? `url('${r.data.cover}')` : '';
+
+                this.wavesurfer.load(this.songUrl);
 
                 if (this.playbackHistory.length === 0 || this.playbackHistory[this.playbackHistory.length - 1].url !== this.songUrl) {
                     this.playbackHistory.push(newSongData);
@@ -145,56 +153,91 @@ watch: {
                     this.currentHistoryIndex = this.playbackHistory.length - 1;
                 }
 
-                this.player.paused = true;
+                this.isPlaying = false;
                 this.isNavigatingHistory = false;
             } catch(e) {
-                console.error("Erreur next-song:", e.response ? e.response.status : e);
+                console.error("Erreur next-song:", e);
                 alert("Impossible de charger la chanson depuis l'API.");
             }
         },
+
         togglePlay() {
-            const p = this.$refs.player;
             if (!this.songUrl) { alert("Aucune chanson chargée."); return; }
-            if (this.player.paused) p.play().then(() => this.player.paused=false).catch(() => alert("Erreur lecture."));
-            else { p.pause(); this.player.paused=true; }
+            this.wavesurfer.playPause();
         },
+
         handleNextClick() {
             if (this.isNavigatingHistory) this.nextSongFromHistory();
             else this.fetchNextSongFromAPI(true);
         },
+
         handleSongEnd() {
             if (this.isNavigatingHistory) this.nextSongFromHistory();
             else this.fetchNextSongFromAPI(false);
         },
+
         loadSongFromHistory(indexToLoad) {
             if (indexToLoad < 0 || indexToLoad >= this.playbackHistory.length) { alert("Pas de chanson."); return; }
             const songData = this.playbackHistory[indexToLoad];
             if (!songData.url) { alert("Chanson indisponible."); return; }
+            
             this.songUrl = songData.url;
             this.songName = songData.name;
             this.bgColor = '#333';
             this.textColor = '#EEE';
-            this.bgImage = '';
-            this.player.paused = true;
+            this.wavesurfer.load(this.songUrl);
+            this.isPlaying = false;
             this.currentHistoryIndex = indexToLoad;
             this.isNavigatingHistory = true;
         },
-        previousSong() { if (this.currentHistoryIndex > 0) this.loadSongFromHistory(this.currentHistoryIndex - 1); else alert("Pas de chanson précédente."); },
-        nextSongFromHistory() { if (this.currentHistoryIndex < this.playbackHistory.length - 1) this.loadSongFromHistory(this.currentHistoryIndex + 1); else this.fetchNextSongFromAPI(true); },
-        replaySong() { const p=this.$refs.player; if(this.songUrl){p.currentTime=0;p.play().then(()=>this.player.paused=false).catch(()=>alert("Erreur relecture."));} else alert("Aucune chanson à rejouer."); },
-        toggleRadio(n) {
-            const refs={fip:'radioFip',fc:'radioCulture'}; const p=this.$refs[refs[n]];
-            if(p.paused) p.play().then(()=>this.radios[n]=true).catch(()=>alert(`Impossible de lire ${n}.`));
-            else { p.pause(); this.radios[n]=false; }
+
+        previousSong() { 
+            if (this.currentHistoryIndex > 0) this.loadSongFromHistory(this.currentHistoryIndex - 1); 
+            else alert("Pas de chanson précédente."); 
         },
-        savePlaybackHistory() { try{ localStorage.setItem('musicagueganHistory', JSON.stringify(this.playbackHistory)); } catch(e){console.error(e);} },
+
+        nextSongFromHistory() { 
+            if (this.currentHistoryIndex < this.playbackHistory.length - 1) 
+                this.loadSongFromHistory(this.currentHistoryIndex + 1); 
+            else this.fetchNextSongFromAPI(true); 
+        },
+
+        replaySong() { 
+            if (this.songUrl) {
+                this.wavesurfer.seek(0);
+                this.wavesurfer.play();
+            } else alert("Aucune chanson à rejouer."); 
+        },
+
+        toggleRadio(n) {
+            const refs = {fip: 'radioFip', fc: 'radioCulture'}; 
+            const p = this.$refs[refs[n]];
+            if(p.paused) p.play().then(() => this.radios[n] = true).catch(() => alert(`Impossible de lire ${n}.`));
+            else { p.pause(); this.radios[n] = false; }
+        },
+
+        savePlaybackHistory() { 
+            try{ localStorage.setItem('musicagueganHistory', JSON.stringify(this.playbackHistory)); } 
+            catch(e){ console.error(e); } 
+        },
+
         loadPlaybackHistory() {
             try {
-                const history=JSON.parse(localStorage.getItem('musicagueganHistory')||'[]');
-                this.playbackHistory=history.filter(item=>item && item.url);
-                if(this.playbackHistory.length>0){this.currentHistoryIndex=this.playbackHistory.length-1;this.loadSongFromHistory(this.currentHistoryIndex);} 
-                else { this.currentHistoryIndex=-1; this.isNavigatingHistory=false; }
-            } catch(e){ console.error(e); this.playbackHistory=[]; this.currentHistoryIndex=-1; this.isNavigatingHistory=false; }
+                const history = JSON.parse(localStorage.getItem('musicagueganHistory') || '[]');
+                this.playbackHistory = history.filter(item => item && item.url);
+                if(this.playbackHistory.length > 0) {
+                    this.currentHistoryIndex = this.playbackHistory.length - 1;
+                    this.loadSongFromHistory(this.currentHistoryIndex);
+                } else { 
+                    this.currentHistoryIndex = -1; 
+                    this.isNavigatingHistory = false; 
+                }
+            } catch(e){ 
+                console.error(e); 
+                this.playbackHistory = []; 
+                this.currentHistoryIndex = -1; 
+                this.isNavigatingHistory = false; 
+            }
         }
     }
 }).mount('#app');

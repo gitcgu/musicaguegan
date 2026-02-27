@@ -24,7 +24,6 @@
         }
         .song-title { font-size: 4em; margin: 20px 0; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); max-width: 80%; word-wrap: break-word; }
         
-        /* 🎵 SOUNDCLOUD-STYLE WAVEFORM */
         #waveform {
             cursor: pointer;
             position: relative;
@@ -76,6 +75,23 @@
             right: 10px;
         }
         
+        .loading-msg {
+            position: absolute;
+            z-index: 20;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(0,0,0,0.8);
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 12px;
+            display: none;
+        }
+
+        #waveform.loading .loading-msg {
+            display: block;
+        }
+        
         .controls { margin-top: 30px; display: flex; justify-content: center; align-items: center; flex-wrap: wrap; }
         .btn {
             width: 160px; height: 160px; display: flex; justify-content: center; align-items: center;
@@ -98,20 +114,20 @@
     <div class="container" :style="{backgroundColor:bgColor, color:textColor}">
         <h1 class="song-title">{{songName || 'Chargement...'}}</h1>
         
-        <!-- 🎵 SOUNDCLOUD-STYLE WAVEFORM -->
-        <div id="waveform">
+        <div id="waveform" :class="{loading: isLoading}">
             <div id="time">0:00</div>
             <div id="duration">0:00</div>
             <div id="hover"></div>
+            <div class="loading-msg">Chargement...</div>
         </div>
 
         <div class="section-title">M U $ I C</div>
         <div class="controls">
             <button class="btn" :style="{backgroundColor:textColor,color:bgColor}" @click="previousSong">&lt;&lt;</button>
-            <button class="btn" :style="{backgroundColor:textColor,color:bgColor}" @click="togglePlay">
+            <button class="btn" :style="{backgroundColor:textColor,color:bgColor}" @click="togglePlay" :disabled="isLoading">
                 {{ isPlaying ? '⏸' : '▶' }}
             </button>
-            <button class="btn" :style="{backgroundColor:textColor,color:bgColor}" @click="replaySong">↻</button>
+            <button class="btn" :style="{backgroundColor:textColor,color:bgColor}" @click="replaySong">&lt;&lt;</button>
             <button class="btn" :style="{backgroundColor:textColor,color:bgColor}" @click="handleNextClick">&gt;&gt;</button>
         </div>
 
@@ -150,6 +166,7 @@ createApp({
             bgColor: '#000',
             textColor: '#FFF',
             isPlaying: false,
+            isLoading: false,
             wavesurfer: null,
             radios: { fip: false, fc: false },
             playbackHistory: [],
@@ -159,7 +176,7 @@ createApp({
     },
 
     async mounted() {
-        // 🎵 CRÉER GRADIENT SOUNDCLOUD-STYLE
+        // 🎵 CRÉER GRADIENT
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         canvas.width = 1;
@@ -190,23 +207,27 @@ createApp({
             barGap: 2,
             barRadius: 2,
             height: 100,
-            normalize: true
+            normalize: true,
+            backend: 'WebAudio'
         });
 
-        // 🎵 ÉVÉNEMENTS WAVESURFER
+        // 🎵 ÉVÉNEMENTS
+        this.wavesurfer.on('play', () => { this.isPlaying = true; });
+        this.wavesurfer.on('pause', () => { this.isPlaying = false; });
         this.wavesurfer.on('finish', () => this.handleSongEnd());
-        this.wavesurfer.on('play', () => this.isPlaying = true);
-        this.wavesurfer.on('pause', () => this.isPlaying = false);
 
-        // Temps et durée
-        this.wavesurfer.on('decode', (duration) => {
+        this.wavesurfer.on('ready', () => {
+            console.log('✅ Waveform prêt');
+            this.isLoading = false;
+            const duration = this.wavesurfer.getDuration();
             document.querySelector('#duration').textContent = this.formatTime(duration);
         });
+
         this.wavesurfer.on('timeupdate', (currentTime) => {
             document.querySelector('#time').textContent = this.formatTime(currentTime);
         });
 
-        // 🎵 HOVER EFFECT
+        // Hover effect
         const waveform = document.querySelector('#waveform');
         const hover = document.querySelector('#hover');
         waveform.addEventListener('pointermove', (e) => {
@@ -224,6 +245,7 @@ createApp({
 
     methods: {
         formatTime(seconds) {
+            if (!seconds || isNaN(seconds)) return '0:00';
             const minutes = Math.floor(seconds / 60);
             const secondsRemainder = Math.round(seconds) % 60;
             const paddedSeconds = `0${secondsRemainder}`.slice(-2);
@@ -232,18 +254,32 @@ createApp({
 
         async fetchNextSongFromAPI(increment = true) {
             try {
+                this.isLoading = true;
                 const r = await axios.get('https://musicabackend.uc.r.appspot.com/api/next-song', { withCredentials: true });
                 const newSongData = { name: r.data.songName, url: r.data.url };
-                if (!newSongData.url) { alert("Chanson indisponible."); return; }
+                
+                if (!newSongData.url) { 
+                    alert("Chanson indisponible."); 
+                    this.isLoading = false;
+                    return; 
+                }
 
                 this.songName = newSongData.name;
                 this.songUrl = newSongData.url;
                 this.bgColor = r.data.color || '#000';
                 this.textColor = r.data.textColor || '#FFF';
 
-                this.wavesurfer.load(this.songUrl);
+                // 🎵 CHARGER LA CHANSON
+                console.log('🎵 Chargement:', this.songUrl);
+                await new Promise((resolve, reject) => {
+                    this.wavesurfer.once('ready', resolve);
+                    this.wavesurfer.once('error', reject);
+                    this.wavesurfer.load(newSongData.url);
+                });
+
                 document.querySelector('#time').textContent = '0:00';
-                document.querySelector('#duration').textContent = '0:00';
+                const duration = this.wavesurfer.getDuration();
+                document.querySelector('#duration').textContent = this.formatTime(duration);
 
                 if (this.playbackHistory.length === 0 || this.playbackHistory[this.playbackHistory.length - 1].url !== this.songUrl) {
                     this.playbackHistory.push(newSongData);
@@ -256,14 +292,17 @@ createApp({
 
                 this.isPlaying = false;
                 this.isNavigatingHistory = false;
+                this.isLoading = false;
+
             } catch(e) {
-                console.error("Erreur next-song:", e);
+                console.error("❌ Erreur next-song:", e);
+                this.isLoading = false;
                 alert("Impossible de charger la chanson depuis l'API.");
             }
         },
 
         togglePlay() {
-            if (!this.songUrl) { alert("Aucune chanson chargée."); return; }
+            if (!this.songUrl || this.isLoading) { alert("Aucune chanson chargée."); return; }
             this.wavesurfer.playPause();
         },
 
@@ -282,13 +321,16 @@ createApp({
             const songData = this.playbackHistory[indexToLoad];
             if (!songData.url) { alert("Chanson indisponible."); return; }
             
+            this.isLoading = true;
             this.songUrl = songData.url;
             this.songName = songData.name;
             this.bgColor = '#333';
             this.textColor = '#EEE';
-            this.wavesurfer.load(this.songUrl);
+            
+            this.wavesurfer.load(songData.url);
             document.querySelector('#time').textContent = '0:00';
             document.querySelector('#duration').textContent = '0:00';
+            
             this.isPlaying = false;
             this.currentHistoryIndex = indexToLoad;
             this.isNavigatingHistory = true;
@@ -306,8 +348,8 @@ createApp({
         },
 
         replaySong() { 
-            if (this.songUrl) {
-                this.wavesurfer.seek(0);
+            if (this.songUrl && !this.isLoading) {
+                this.wavesurfer.seekTo(0);
                 this.wavesurfer.play();
             } else alert("Aucune chanson à rejouer."); 
         },

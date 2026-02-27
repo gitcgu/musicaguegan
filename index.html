@@ -545,10 +545,17 @@
                 else this.fetchNextSongFromAPI(true);
             },
 
-            handleSongEnd() {
-                if (this.isNavigatingHistory) this.nextSongFromHistory();
-                else this.fetchNextSongFromAPI(false);
-            },
+handleSongEnd() {
+    if (this.isNavigatingHistory) this.nextSongFromHistory();
+    else this.fetchNextSongFromAPI(false);
+    
+    // 🆕 JOUER AUTOMATIQUEMENT APRÈS 2 SECONDES
+    setTimeout(() => {
+        if (this.songUrl) {
+            this.wavesurfer.play();
+        }
+    }, 2000);
+},
 
             loadSongFromHistory(indexToLoad) {
                 if (indexToLoad < 0 || indexToLoad >= this.playbackHistory.length) { alert("Pas de chanson."); return; }

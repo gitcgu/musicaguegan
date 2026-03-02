@@ -318,56 +318,90 @@ createApp({
         };
     },
 
-    async mounted() {
-        this.wavesurfer = WaveSurfer.create({
-            container: '#waveform',
-            waveColor: 'rgb(200, 100, 200)',
-            progressColor: 'rgb(255, 100, 100)',
-            barWidth: 2,
-            barGap: 1,
-            barRadius: 2,
-            height: 120
-        });
+ async mounted() {
+    this.wavesurfer = WaveSurfer.create({
+        container: '#waveform',
+        waveColor: 'rgb(200, 100, 200)',
+        progressColor: 'rgb(255, 100, 100)',
+        barWidth: 2,
+        barGap: 1,
+        barRadius: 2,
+        height: 120
+    });
 
-        // 🆕 ÉVÉNEMENT READY (important!)
-        this.wavesurfer.on('ready', () => {
-            console.log('✅ Chanson prête à être jouée');
-            this.isSongReady = true;
+    // 🆕 ÉVÉNEMENT READY
+    this.wavesurfer.on('ready', () => {
+        console.log('✅ Chanson prête à être jouée');
+        this.isSongReady = true;
+        setTimeout(() => {
             const duration = this.wavesurfer.getDuration();
             const el = document.querySelector('#duration');
             if (el) el.textContent = this.formatTime(duration);
-        });
+        }, 100);
+    });
 
-        this.wavesurfer.on('play', () => { 
-            this.isPlaying = true; 
-            console.log('▶ Lecture en cours');
-        });
+    // 🆕 MISE À JOUR DU TEMPS EN TEMPS RÉEL
+    let timeUpdateInterval = null;
+
+    const startTimeUpdate = () => {
+        if (timeUpdateInterval) clearInterval(timeUpdateInterval);
         
-        this.wavesurfer.on('pause', () => { 
-            this.isPlaying = false; 
-        });
-        
-        this.wavesurfer.on('finish', () => {
-            console.log('🏁 Chanson terminée');
-            this.handleSongEnd();
-        });
+        timeUpdateInterval = setInterval(() => {
+            if (this.wavesurfer && this.isPlaying) {
+                try {
+                    const currentTime = this.wavesurfer.getCurrentTime();
+                    const el = document.querySelector('#time');
+                    if (el) {
+                        el.textContent = this.formatTime(currentTime);
+                    }
+                } catch (e) {
+                    console.error('Erreur mise à jour temps:', e);
+                }
+            }
+        }, 100); // Mise à jour chaque 100ms
+    };
 
-        this.wavesurfer.on('timeupdate', (currentTime) => {
-            const el = document.querySelector('#time');
-            if (el) el.textContent = this.formatTime(currentTime);
-        });
+    const stopTimeUpdate = () => {
+        if (timeUpdateInterval) {
+            clearInterval(timeUpdateInterval);
+            timeUpdateInterval = null;
+        }
+    };
 
-        // 🆕 ÉVÉNEMENT ERROR
-        this.wavesurfer.on('error', (error) => {
-            console.error('❌ Erreur WaveSurfer:', error);
-            alert('Erreur de chargement de la chanson. Essai de la suivante...');
-            this.fetchNextSongFromAPI(true);
-        });
+    this.wavesurfer.on('play', () => { 
+        this.isPlaying = true; 
+        console.log('▶ Lecture en cours');
+        startTimeUpdate(); // 🆕 LANCER LA MISE À JOUR
+    });
+    
+    this.wavesurfer.on('pause', () => { 
+        this.isPlaying = false;
+        stopTimeUpdate(); // 🆕 ARRÊTER LA MISE À JOUR
+    });
+    
+    this.wavesurfer.on('finish', () => {
+        console.log('🏁 Chanson terminée');
+        stopTimeUpdate(); // 🆕 ARRÊTER LA MISE À JOUR
+        this.handleSongEnd();
+    });
 
-        this.loadFeedback();
-        // 🆕 Charger TOUJOURS depuis l'API au démarrage
-        await this.fetchNextSongFromAPI(false);
-    },
+    // ❌ SUPPRIMEZ l'ancien timeupdate (ou laissez-le commenté)
+    // this.wavesurfer.on('timeupdate', (currentTime) => {
+    //     const el = document.querySelector('#time');
+    //     if (el) el.textContent = this.formatTime(currentTime);
+    // });
+
+    // 🆕 ÉVÉNEMENT ERROR
+    this.wavesurfer.on('error', (error) => {
+        console.error('❌ Erreur WaveSurfer:', error);
+        stopTimeUpdate(); // 🆕 ARRÊTER LA MISE À JOUR
+        alert('Erreur de chargement de la chanson. Essai de la suivante...');
+        this.fetchNextSongFromAPI(true);
+    });
+
+    this.loadFeedback();
+    await this.fetchNextSongFromAPI(false);
+},
 
     methods: {
         async likeSong() {

@@ -262,10 +262,10 @@
                 </button>
             </div>
 
-            <!-- Stats utilisateur -->
-            <div class="user-stats">
-                ❤️ {{ likeCount }} | 👎 {{ dislikeCount }}
-            </div>
+           <!-- Stats utilisateur -->
+<div class="user-stats">
+    ❤️ {{ globalLikeCount }} | 👎 {{ globalDislikeCount }}
+</div>
 
             <!-- RADIOS -->
             <div class="section-title">📻 R A D I O 📻</div>
@@ -298,25 +298,25 @@
 
 createApp({
     data() {
-        return {
-            songName: 'Chargement...',
-            songUrl: '',
-            bgColor: '#000',
-            textColor: '#FFF',
-            isPlaying: false,
-            wavesurfer: null,
-            radios: { fip: false, fc: false },
-            playbackHistory: [],
-            currentHistoryIndex: -1,
-            isNavigatingHistory: false,
-            currentFeedback: null,
-            userLikes: [],
-            userDislikes: [],
-            likeCount: 0,
-            dislikeCount: 0,
-            isSongReady: false  // 🆕 Tracker l'état du chargement
-        };
-    },
+    return {
+        songName: 'Chargement...',
+        songUrl: '',
+        bgColor: '#000',
+        textColor: '#FFF',
+        isPlaying: false,
+        wavesurfer: null,
+        radios: { fip: false, fc: false },
+        playbackHistory: [],
+        currentHistoryIndex: -1,
+        isNavigatingHistory: false,
+        currentFeedback: null,
+        userLikes: [],
+        userDislikes: [],
+        globalLikeCount: 0,        // 🆕
+        globalDislikeCount: 0,     // 🆕
+        isSongReady: false
+    };
+}
 
  async mounted() {
     this.wavesurfer = WaveSurfer.create({
@@ -513,6 +513,9 @@ createApp({
                 this.songUrl = newSongData.url;
                 this.bgColor = r.data.color || '#000';
                 this.textColor = r.data.textColor || '#FFF';
+
+                this.globalLikeCount = r.data.likeCount || 0;
+this.globalDislikeCount = r.data.dislikeCount || 0;
 
                 // 🆕 Ajouter à l'historique
                 if (this.playbackHistory.length === 0 || this.playbackHistory[this.playbackHistory.length - 1].url !== this.songUrl) {

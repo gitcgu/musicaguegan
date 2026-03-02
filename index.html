@@ -296,295 +296,353 @@
 <script>
     const { createApp } = Vue;
 
-    createApp({
-        data() {
-            return {
-                songName: 'Chargement...',
-                songUrl: '',
-                bgColor: '#000',
-                textColor: '#FFF',
-                isPlaying: false,
-                wavesurfer: null,
-                radios: { fip: false, fc: false },
-                playbackHistory: [],
-                currentHistoryIndex: -1,
-                isNavigatingHistory: false,
-                currentFeedback: null,
-                userLikes: [],
-                userDislikes: [],
-                likeCount: 0,
-                dislikeCount: 0
-            };
+createApp({
+    data() {
+        return {
+            songName: 'Chargement...',
+            songUrl: '',
+            bgColor: '#000',
+            textColor: '#FFF',
+            isPlaying: false,
+            wavesurfer: null,
+            radios: { fip: false, fc: false },
+            playbackHistory: [],
+            currentHistoryIndex: -1,
+            isNavigatingHistory: false,
+            currentFeedback: null,
+            userLikes: [],
+            userDislikes: [],
+            likeCount: 0,
+            dislikeCount: 0,
+            isSongReady: false  // 🆕 Tracker l'état du chargement
+        };
+    },
+
+    async mounted() {
+        this.wavesurfer = WaveSurfer.create({
+            container: '#waveform',
+            waveColor: 'rgb(200, 100, 200)',
+            progressColor: 'rgb(255, 100, 100)',
+            barWidth: 2,
+            barGap: 1,
+            barRadius: 2,
+            height: 120
+        });
+
+        // 🆕 ÉVÉNEMENT READY (important!)
+        this.wavesurfer.on('ready', () => {
+            console.log('✅ Chanson prête à être jouée');
+            this.isSongReady = true;
+            const duration = this.wavesurfer.getDuration();
+            const el = document.querySelector('#duration');
+            if (el) el.textContent = this.formatTime(duration);
+        });
+
+        this.wavesurfer.on('play', () => { 
+            this.isPlaying = true; 
+            console.log('▶ Lecture en cours');
+        });
+        
+        this.wavesurfer.on('pause', () => { 
+            this.isPlaying = false; 
+        });
+        
+        this.wavesurfer.on('finish', () => {
+            console.log('🏁 Chanson terminée');
+            this.handleSongEnd();
+        });
+
+        this.wavesurfer.on('timeupdate', (currentTime) => {
+            const el = document.querySelector('#time');
+            if (el) el.textContent = this.formatTime(currentTime);
+        });
+
+        // 🆕 ÉVÉNEMENT ERROR
+        this.wavesurfer.on('error', (error) => {
+            console.error('❌ Erreur WaveSurfer:', error);
+            alert('Erreur de chargement de la chanson. Essai de la suivante...');
+            this.fetchNextSongFromAPI(true);
+        });
+
+        this.loadFeedback();
+        // 🆕 Charger TOUJOURS depuis l'API au démarrage
+        await this.fetchNextSongFromAPI(false);
+    },
+
+    methods: {
+        async likeSong() {
+            if (!this.songUrl) return;
+            
+            if (this.currentFeedback === 'like') {
+                this.currentFeedback = null;
+                this.userLikes = this.userLikes.filter(url => url !== this.songUrl);
+            } else {
+                this.currentFeedback = 'like';
+                this.userDislikes = this.userDislikes.filter(url => url !== this.songUrl);
+                if (!this.userLikes.includes(this.songUrl)) {
+                    this.userLikes.push(this.songUrl);
+                }
+            }
+            
+            this.saveFeedback();
+            await this.sendFeedbackToBackend('like');
         },
 
-        async mounted() {
-            this.wavesurfer = WaveSurfer.create({
-                container: '#waveform',
-                waveColor: 'rgb(200, 100, 200)',
-                progressColor: 'rgb(255, 100, 100)',
-                barWidth: 2,
-                barGap: 1,
-                barRadius: 2,
-                height: 120
-            });
-
-            this.wavesurfer.on('play', () => { this.isPlaying = true; });
-            this.wavesurfer.on('pause', () => { this.isPlaying = false; });
-            this.wavesurfer.on('finish', () => this.handleSongEnd());
-
-            this.wavesurfer.on('timeupdate', (currentTime) => {
-                const el = document.querySelector('#time');
-                if (el) el.textContent = this.formatTime(currentTime);
-            });
-
-            this.wavesurfer.on('ready', () => {
-                const duration = this.wavesurfer.getDuration();
-                const el = document.querySelector('#duration');
-                if (el) el.textContent = this.formatTime(duration);
-            });
-
-            this.loadFeedback();
-            this.loadPlaybackHistory();
-            await this.fetchNextSongFromAPI(false);
+        async dislikeSong() {
+            if (!this.songUrl) return;
+            
+            if (this.currentFeedback === 'dislike') {
+                this.currentFeedback = null;
+                this.userDislikes = this.userDislikes.filter(url => url !== this.songUrl);
+            } else {
+                this.currentFeedback = 'dislike';
+                this.userLikes = this.userLikes.filter(url => url !== this.songUrl);
+                if (!this.userDislikes.includes(this.songUrl)) {
+                    this.userDislikes.push(this.songUrl);
+                }
+            }
+            
+            this.saveFeedback();
+            await this.sendFeedbackToBackend('dislike');
         },
 
-        methods: {
-            async likeSong() {
-                if (!this.songUrl) return;
-                
-                if (this.currentFeedback === 'like') {
-                    this.currentFeedback = null;
-                    this.userLikes = this.userLikes.filter(url => url !== this.songUrl);
-                } else {
-                    this.currentFeedback = 'like';
-                    this.userDislikes = this.userDislikes.filter(url => url !== this.songUrl);
-                    if (!this.userLikes.includes(this.songUrl)) {
-                        this.userLikes.push(this.songUrl);
-                    }
-                }
-                
-                this.saveFeedback();
-                await this.sendFeedbackToBackend('like');
-            },
+        async sendFeedbackToBackend(feedback) {
+            try {
+                await axios.post(
+                    'https://musicabackend.uc.r.appspot.com/api/song-feedback',
+                    {
+                        songUrl: this.songUrl,
+                        songName: this.songName,
+                        feedback: feedback
+                    },
+                    { withCredentials: true }
+                );
+                console.log(`✅ Feedback envoyé: ${feedback}`);
+            } catch (e) {
+                console.error('❌ Erreur feedback:', e);
+            }
+        },
 
-            async dislikeSong() {
-                if (!this.songUrl) return;
-                
-                if (this.currentFeedback === 'dislike') {
-                    this.currentFeedback = null;
-                    this.userDislikes = this.userDislikes.filter(url => url !== this.songUrl);
-                } else {
-                    this.currentFeedback = 'dislike';
-                    this.userLikes = this.userLikes.filter(url => url !== this.songUrl);
-                    if (!this.userDislikes.includes(this.songUrl)) {
-                        this.userDislikes.push(this.songUrl);
-                    }
-                }
-                
-                this.saveFeedback();
-                await this.sendFeedbackToBackend('dislike');
-            },
+        saveFeedback() {
+            localStorage.setItem('musicaLikes', JSON.stringify(this.userLikes));
+            localStorage.setItem('musicaDislikes', JSON.stringify(this.userDislikes));
+            this.likeCount = this.userLikes.length;
+            this.dislikeCount = this.userDislikes.length;
+        },
 
-            async sendFeedbackToBackend(feedback) {
-                try {
-                    await axios.post(
-                        'https://musicabackend.uc.r.appspot.com/api/song-feedback',
-                        {
-                            songUrl: this.songUrl,
-                            songName: this.songName,
-                            feedback: feedback
-                        },
-                        { withCredentials: true }
-                    );
-                    console.log(`✅ Feedback envoyé: ${feedback}`);
-                } catch (e) {
-                    console.error('❌ Erreur feedback:', e);
-                }
-            },
-
-            saveFeedback() {
-                localStorage.setItem('musicaLikes', JSON.stringify(this.userLikes));
-                localStorage.setItem('musicaDislikes', JSON.stringify(this.userDislikes));
+        loadFeedback() {
+            try {
+                this.userLikes = JSON.parse(localStorage.getItem('musicaLikes') || '[]');
+                this.userDislikes = JSON.parse(localStorage.getItem('musicaDislikes') || '[]');
                 this.likeCount = this.userLikes.length;
                 this.dislikeCount = this.userDislikes.length;
-            },
+            } catch (e) {
+                console.error('Erreur chargement feedback:', e);
+                this.userLikes = [];
+                this.userDislikes = [];
+            }
+        },
 
-            loadFeedback() {
-                try {
-                    this.userLikes = JSON.parse(localStorage.getItem('musicaLikes') || '[]');
-                    this.userDislikes = JSON.parse(localStorage.getItem('musicaDislikes') || '[]');
-                    this.likeCount = this.userLikes.length;
-                    this.dislikeCount = this.userDislikes.length;
-                } catch (e) {
-                    console.error('Erreur chargement feedback:', e);
-                    this.userLikes = [];
-                    this.userDislikes = [];
-                }
-            },
+        checkCurrentSongFeedback() {
+            if (this.userLikes.includes(this.songUrl)) {
+                this.currentFeedback = 'like';
+            } else if (this.userDislikes.includes(this.songUrl)) {
+                this.currentFeedback = 'dislike';
+            } else {
+                this.currentFeedback = null;
+            }
+            console.log(`🔍 Feedback: ${this.currentFeedback}`);
+        },
 
-            checkCurrentSongFeedback() {
-                if (this.userLikes.includes(this.songUrl)) {
-                    this.currentFeedback = 'like';
-                } else if (this.userDislikes.includes(this.songUrl)) {
-                    this.currentFeedback = 'dislike';
-                } else {
-                    this.currentFeedback = null;
-                }
-                console.log(`🔍 Feedback actuel: ${this.currentFeedback}`);
-            },
+        formatTime(seconds) {
+            if (!seconds || isNaN(seconds)) return '0:00';
+            const minutes = Math.floor(seconds / 60);
+            const secs = Math.round(seconds % 60);
+            const paddedSeconds = `0${secs}`.slice(-2);
+            return `${minutes}:${paddedSeconds}`;
+        },
 
-            formatTime(seconds) {
-                if (!seconds || isNaN(seconds)) return '0:00';
-                const minutes = Math.floor(seconds / 60);
-                const secs = Math.round(seconds % 60);
-                const paddedSeconds = `0${secs}`.slice(-2);
-                return `${minutes}:${paddedSeconds}`;
-            },
-
-            async fetchNextSongFromAPI(increment = true) {
-                try {
-                    const r = await axios.get('https://musicabackend.uc.r.appspot.com/api/next-song', { withCredentials: true });
-                    const newSongData = { name: r.data.songName, url: r.data.url };
-                    
-                    if (!newSongData.url) { 
-                        alert("Chanson indisponible."); 
-                        return; 
-                    }
-
-                    this.songName = newSongData.name;
-                    this.songUrl = newSongData.url;
-                    this.bgColor = r.data.color || '#000';
-                    this.textColor = r.data.textColor || '#FFF';
-
-                    this.wavesurfer.load(this.songUrl);
-                    
-                    document.querySelector('#time').textContent = '0:00';
-                    document.querySelector('#duration').textContent = '0:00';
-
-                    if (this.playbackHistory.length === 0 || this.playbackHistory[this.playbackHistory.length - 1].url !== this.songUrl) {
-                        this.playbackHistory.push(newSongData);
-                        if (this.playbackHistory.length > 20) this.playbackHistory.shift();
-                        this.currentHistoryIndex = this.playbackHistory.length - 1;
-                        this.savePlaybackHistory();
-                    } else {
-                        this.currentHistoryIndex = this.playbackHistory.length - 1;
-                    }
-
-                    // 🔧 RÉINITIALISER
-                    this.currentFeedback = null;
-                    
-                    // PUIS vérifier le feedback de la NOUVELLE chanson
-                    this.$nextTick(() => {
-                        this.checkCurrentSongFeedback();
-                    });
-
-                    this.isPlaying = false;
-                    this.isNavigatingHistory = false;
-
-                } catch(e) {
-                    console.error("Erreur:", e);
-                    alert("Impossible de charger la chanson depuis l'API.");
-                }
-            },
-
-            togglePlay() {
-                if (!this.songUrl) { alert("Aucune chanson chargée."); return; }
-                this.wavesurfer.playPause();
-            },
-
-            handleNextClick() {
-                if (this.isNavigatingHistory) this.nextSongFromHistory();
-                else this.fetchNextSongFromAPI(true);
-            },
-
-handleSongEnd() {
-    if (this.isNavigatingHistory) this.nextSongFromHistory();
-    else this.fetchNextSongFromAPI(false);
-    
-    // 🆕 JOUER AUTOMATIQUEMENT APRÈS 2 SECONDES
-    setTimeout(() => {
-        if (this.songUrl) {
-            this.wavesurfer.play();
-        }
-    }, 2000);
-},
-
-            loadSongFromHistory(indexToLoad) {
-                if (indexToLoad < 0 || indexToLoad >= this.playbackHistory.length) { alert("Pas de chanson."); return; }
-                const songData = this.playbackHistory[indexToLoad];
-                if (!songData.url) { alert("Chanson indisponible."); return; }
+        async fetchNextSongFromAPI(increment = true) {
+            try {
+                console.log('📥 Chargement chanson depuis API...');
+                this.isSongReady = false;  // 🆕 Reset l'état
                 
-                this.songUrl = songData.url;
-                this.songName = songData.name;
-                this.bgColor = '#333';
-                this.textColor = '#EEE';
+                const r = await axios.get('https://musicabackend.uc.r.appspot.com/api/next-song', { withCredentials: true });
+                const newSongData = { name: r.data.songName, url: r.data.url };
                 
-                this.wavesurfer.load(songData.url);
+                if (!newSongData.url) { 
+                    alert("Chanson indisponible."); 
+                    return; 
+                }
+
+                this.songName = newSongData.name;
+                this.songUrl = newSongData.url;
+                this.bgColor = r.data.color || '#000';
+                this.textColor = r.data.textColor || '#FFF';
+
+                // 🆕 Ajouter à l'historique
+                if (this.playbackHistory.length === 0 || this.playbackHistory[this.playbackHistory.length - 1].url !== this.songUrl) {
+                    this.playbackHistory.push(newSongData);
+                    if (this.playbackHistory.length > 20) this.playbackHistory.shift();
+                    this.savePlaybackHistory();
+                }
+                this.currentHistoryIndex = this.playbackHistory.length - 1;
+                this.isNavigatingHistory = false;
+
+                // 🆕 Important: charger sans jouer d'abord
+                this.wavesurfer.load(this.songUrl);
                 
                 document.querySelector('#time').textContent = '0:00';
                 document.querySelector('#duration').textContent = '0:00';
-                
+
+                // 🆕 Vérifier le feedback de la NOUVELLE chanson
+                this.checkCurrentSongFeedback();
                 this.isPlaying = false;
-                this.currentHistoryIndex = indexToLoad;
-                this.isNavigatingHistory = true;
 
-                // 🔧 Réinitialiser PUIS vérifier
-                this.currentFeedback = null;
-                this.$nextTick(() => {
-                    this.checkCurrentSongFeedback();
-                });
-            },
+                console.log(`✅ Chanson chargée: ${newSongData.name}`);
 
-            previousSong() { 
-                if (this.currentHistoryIndex > 0) this.loadSongFromHistory(this.currentHistoryIndex - 1); 
-                else alert("Pas de chanson précédente."); 
-            },
+            } catch(e) {
+                console.error("❌ Erreur API:", e);
+                alert("Impossible de charger la chanson depuis l'API.");
+            }
+        },
 
-            nextSongFromHistory() { 
-                if (this.currentHistoryIndex < this.playbackHistory.length - 1) 
-                    this.loadSongFromHistory(this.currentHistoryIndex + 1); 
-                else this.fetchNextSongFromAPI(true); 
-            },
+        togglePlay() {
+            if (!this.songUrl) { 
+                alert("Aucune chanson chargée."); 
+                return; 
+            }
+            
+            if (!this.isSongReady) {
+                console.warn('⚠️ La chanson n\'est pas prête. Attente...');
+                return;
+            }
+            
+            this.wavesurfer.playPause();
+        },
 
-            replaySong() { 
-                if (this.songUrl) {
-                    this.wavesurfer.seekTo(0);
+        handleNextClick() {
+            if (this.isNavigatingHistory) this.nextSongFromHistory();
+            else this.fetchNextSongFromAPI(true);
+        },
+
+        handleSongEnd() {
+            console.log('🔄 Passage à la chanson suivante...');
+            
+            if (this.isNavigatingHistory) {
+                this.nextSongFromHistory();
+            } else {
+                this.fetchNextSongFromAPI(false);
+            }
+            
+            // 🆕 Lancer la lecture automatique quand la chanson est prête
+            const autoPlayTimeout = setInterval(() => {
+                if (this.isSongReady && this.songUrl) {
+                    console.log('🎵 Lecture auto lancée');
                     this.wavesurfer.play();
-                } else alert("Aucune chanson à rejouer."); 
-            },
-
-            toggleRadio(n) {
-                const refs = {fip: 'radioFip', fc: 'radioCulture'}; 
-                const p = this.$refs[refs[n]];
-                if(p.paused) p.play().then(() => this.radios[n] = true).catch(() => alert(`Impossible de lire ${n}.`));
-                else { p.pause(); this.radios[n] = false; }
-            },
-
-            savePlaybackHistory() { 
-                try{ localStorage.setItem('musicagueganHistory', JSON.stringify(this.playbackHistory)); } 
-                catch(e){ console.error(e); } 
-            },
-
-            loadPlaybackHistory() {
-                try {
-                    const history = JSON.parse(localStorage.getItem('musicagueganHistory') || '[]');
-                    this.playbackHistory = history.filter(item => item && item.url);
-                    if(this.playbackHistory.length > 0) {
-                        this.currentHistoryIndex = this.playbackHistory.length - 1;
-                        this.loadSongFromHistory(this.currentHistoryIndex);
-                    } else { 
-                        this.currentHistoryIndex = -1; 
-                        this.isNavigatingHistory = false; 
-                    }
-                } catch(e){ 
-                    console.error(e); 
-                    this.playbackHistory = []; 
-                    this.currentHistoryIndex = -1; 
-                    this.isNavigatingHistory = false; 
+                    clearInterval(autoPlayTimeout);
                 }
+            }, 200);
+
+            // 🆕 Timeout de sécurité (5s max)
+            setTimeout(() => clearInterval(autoPlayTimeout), 5000);
+        },
+
+        loadSongFromHistory(indexToLoad) {
+            if (indexToLoad < 0 || indexToLoad >= this.playbackHistory.length) { 
+                alert("Pas de chanson."); 
+                return; 
+            }
+            
+            const songData = this.playbackHistory[indexToLoad];
+            if (!songData.url) { 
+                alert("Chanson indisponible."); 
+                return; 
+            }
+            
+            console.log(`📚 Chargement depuis historique: ${songData.name}`);
+            this.isSongReady = false;  // 🆕 Reset
+            
+            this.songUrl = songData.url;
+            this.songName = songData.name;
+            this.bgColor = '#333';
+            this.textColor = '#EEE';
+            
+            this.wavesurfer.load(songData.url);
+            
+            document.querySelector('#time').textContent = '0:00';
+            document.querySelector('#duration').textContent = '0:00';
+            
+            this.isPlaying = false;
+            this.currentHistoryIndex = indexToLoad;
+            this.isNavigatingHistory = true;
+
+            this.checkCurrentSongFeedback();
+        },
+
+        previousSong() { 
+            if (this.currentHistoryIndex > 0) {
+                this.loadSongFromHistory(this.currentHistoryIndex - 1);
+            } else {
+                alert("Pas de chanson précédente."); 
+            }
+        },
+
+        nextSongFromHistory() { 
+            if (this.currentHistoryIndex < this.playbackHistory.length - 1) {
+                this.loadSongFromHistory(this.currentHistoryIndex + 1);
+            } else {
+                this.fetchNextSongFromAPI(true);
+            }
+        },
+
+        replaySong() { 
+            if (this.songUrl && this.isSongReady) {
+                this.wavesurfer.seekTo(0);
+                this.wavesurfer.play();
+            } else {
+                alert("Aucune chanson à rejouer."); 
+            }
+        },
+
+        toggleRadio(n) {
+            const refs = {fip: 'radioFip', fc: 'radioCulture'}; 
+            const p = this.$refs[refs[n]];
+            if(p.paused) {
+                p.play()
+                    .then(() => {
+                        this.radios[n] = true;
+                        console.log(`📻 Radio ${n} lancée`);
+                    })
+                    .catch(err => {
+                        console.error(`Erreur radio ${n}:`, err);
+                        alert(`Impossible de lire ${n}.`);
+                    });
+            } else { 
+                p.pause(); 
+                this.radios[n] = false; 
+            }
+        },
+
+        savePlaybackHistory() { 
+            try{ 
+                localStorage.setItem('musicagueganHistory', JSON.stringify(this.playbackHistory)); 
+            } catch(e){ 
+                console.error('Erreur sauvegarde historique:', e); 
+            } 
+        },
+
+        loadPlaybackHistory() {
+            try {
+                const history = JSON.parse(localStorage.getItem('musicagueganHistory') || '[]');
+                this.playbackHistory = history.filter(item => item && item.url);
+            } catch(e){ 
+                console.error('Erreur chargement historique:', e); 
+                this.playbackHistory = []; 
             }
         }
-    }).mount('#app');
+    }
+}).mount('#app');
 </script>
 </body>
 </html>

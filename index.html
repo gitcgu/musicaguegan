@@ -419,22 +419,27 @@
                 await this.sendFeedbackToBackend('dislike');
             },
 
-            async sendFeedbackToBackend(feedback) {
-                try {
-                    await axios.post(
-                        'https://musicabackend.uc.r.appspot.com/api/song-feedback',
-                        {
-                            songUrl: this.songUrl,
-                            songName: this.songName,
-                            feedback: feedback
-                        },
-                        { withCredentials: true }
-                    );
-                    console.log(`✅ Feedback envoyé: ${feedback}`);
-                } catch (e) {
-                    console.error('❌ Erreur feedback:', e);
-                }
+async sendFeedbackToBackend(feedback) {
+    try {
+        const response = await axios.post(
+            'https://musicabackend.uc.r.appspot.com/api/song-feedback',
+            {
+                songUrl: this.songUrl,
+                songName: this.songName,
+                feedback: feedback
             },
+            { withCredentials: true }
+        );
+        
+        // 🆕 METTRE À JOUR LES STATS GLOBALES
+        this.globalLikeCount = response.data.likeCount || 0;
+        this.globalDislikeCount = response.data.dislikeCount || 0;
+        
+        console.log(`✅ Feedback envoyé: ${feedback}`);
+    } catch (e) {
+        console.error('❌ Erreur feedback:', e);
+    }
+},
 
             saveFeedback() {
                 localStorage.setItem('musicaLikes', JSON.stringify(this.userLikes));

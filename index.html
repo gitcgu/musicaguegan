@@ -31,6 +31,8 @@
             align-items: center;
             text-align: center;
             transition: background-color 0.3s ease;
+    position: relative;  /* 🆕 AJOUTE CECI */
+
         }
 
         .song-title {
@@ -212,6 +214,14 @@
 <body>
     <div id="app">
         <div class="container" :style="{ backgroundColor: bgColor, color: textColor }">
+
+<!-- SWITCH MODE MP3/MIX -->
+<!-- SWITCH MODE MP3/MIX -->
+<div style="position: absolute; top: 20px; right: 20px; z-index: 100;">
+    <button @click="toggleMode" style="padding: 10px 20px; background: #ff4444; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; font-size: 14px;">
+        🎵 {{ mode }}
+    </button>
+</div>
             
             <h1 class="song-title">{{ songName }}</h1>
 
@@ -302,6 +312,7 @@
                 userDislikes: [],
                 globalLikeCount: 0,
                 globalDislikeCount: 0,
+                mode: 'mp3', 
                 isSongReady: false
             };
         },
@@ -440,7 +451,11 @@ async sendFeedbackToBackend(feedback) {
         console.error('❌ Erreur feedback:', e);
     }
 },
-
+toggleMode() {
+    this.mode = this.mode === 'mp3' ? 'mix' : 'mp3';
+    console.log(`🔄 Mode: ${this.mode}`);
+    this.fetchNextSongFromAPI(false); // Charger une nouvelle chanson
+},
             saveFeedback() {
                 localStorage.setItem('musicaLikes', JSON.stringify(this.userLikes));
                 localStorage.setItem('musicaDislikes', JSON.stringify(this.userDislikes));
@@ -480,7 +495,7 @@ async sendFeedbackToBackend(feedback) {
                     console.log('📥 Chargement chanson depuis API...');
                     this.isSongReady = false;
                     
-                    const r = await axios.get('https://musicabackend.uc.r.appspot.com/api/next-song', { withCredentials: true });
+                    const r = await axios.get(`https://musicabackend.uc.r.appspot.com/api/next-song?mode=${this.mode}`, { withCredentials: true });
                     const newSongData = { name: r.data.songName, url: r.data.url };
                     
                     if (!newSongData.url) { 

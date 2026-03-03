@@ -550,11 +550,24 @@ onMetadata() {
                     this.currentHistoryIndex = this.playbackHistory.length - 1;
                     this.isNavigatingHistory = false;
 
-                    this.wavesurfer.load(this.songUrl);
+             //       this.wavesurfer.load(this.songUrl);
                     
-                    document.querySelector('#time').textContent = '0:00';
-                    document.querySelector('#duration').textContent = '0:00';
+             //       document.querySelector('#time').textContent = '0:00';
+             //       document.querySelector('#duration').textContent = '0:00';
+// Charger le lecteur approprié
+if (this.mode === 'mix') {
+    // Pour MIX, l'audio HTML5 se charge automatiquement
+    this.currentTime = '0:00';
+    this.duration = '0:00';
+    this.isSongReady = true;
+} else {
+    // Pour MP3, utiliser WaveSurfer
+    this.wavesurfer.load(this.songUrl);
+    document.querySelector('#time').textContent = '0:00';
+    document.querySelector('#duration').textContent = '0:00';
+}
 
+                    
                     this.checkCurrentSongFeedback();
                     this.isPlaying = false;
 

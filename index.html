@@ -226,16 +226,17 @@
             <h1 class="song-title">{{ songName }}</h1>
 
 <!-- LECTEUR SIMPLE POUR MIX (streaming natif) -->
-<div v-if="mode === 'mix'" style="margin: 30px 0;">
+<!-- LECTEUR SIMPLE POUR MIX (streaming natif) -->
+<div v-if="mode === 'mix'" style="margin: 30px 0; width: 100%; max-width: 1200px;">
     <audio 
         ref="audioPlayer" 
         :src="songUrl" 
         controls 
-        style="width: 100%; max-width: 600px;"
+        style="width: 100%; height: 50px; border-radius: 10px;"
         @timeupdate="updateTime"
         @loadedmetadata="onMetadata"
     ></audio>
-    <div style="margin-top: 15px; font-size: 16px;">
+    <div style="margin-top: 15px; font-size: 18px; font-weight: bold;">
         {{ currentTime }} / {{ duration }}
     </div>
 </div>

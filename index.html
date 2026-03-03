@@ -225,10 +225,26 @@
             
             <h1 class="song-title">{{ songName }}</h1>
 
-            <div id="waveform" :style="{ backgroundColor: bgColor }">
-                <div id="time">0:00</div>
-                <div id="duration">0:00</div>
-            </div>
+<!-- LECTEUR SIMPLE POUR MIX (streaming natif) -->
+<div v-if="mode === 'mix'" style="margin: 30px 0;">
+    <audio 
+        ref="audioPlayer" 
+        :src="songUrl" 
+        controls 
+        style="width: 100%; max-width: 600px;"
+        @timeupdate="updateTime"
+        @loadedmetadata="onMetadata"
+    ></audio>
+    <div style="margin-top: 15px; font-size: 16px;">
+        {{ currentTime }} / {{ duration }}
+    </div>
+</div>
+
+<!-- WAVEFORM POUR MP3 NORMAL -->
+<div v-if="mode === 'mp3'" id="waveform" :style="{ backgroundColor: bgColor }">
+    <div id="time">0:00</div>
+    <div id="duration">0:00</div>
+</div>
 
             <div class="controls">
                 <button class="btn" :style="{ backgroundColor: textColor, color: bgColor }" @click="previousSong">
@@ -313,6 +329,8 @@
                 globalLikeCount: 0,
                 globalDislikeCount: 0,
                 mode: 'mp3', 
+                currentTime: '0:00',
+                duration: '0:00',
                 isSongReady: false
             };
         },
@@ -456,6 +474,19 @@ toggleMode() {
     console.log(`🔄 Mode: ${this.mode}`);
     this.fetchNextSongFromAPI(false); // Charger une nouvelle chanson
 },
+            updateTime() {
+    const audio = this.$refs.audioPlayer;
+    if (audio) {
+        this.currentTime = this.formatTime(audio.currentTime);
+    }
+},
+
+onMetadata() {
+    const audio = this.$refs.audioPlayer;
+    if (audio) {
+        this.duration = this.formatTime(audio.duration);
+    }
+},
             saveFeedback() {
                 localStorage.setItem('musicaLikes', JSON.stringify(this.userLikes));
                 localStorage.setItem('musicaDislikes', JSON.stringify(this.userDislikes));
@@ -534,19 +565,31 @@ toggleMode() {
                 }
             },
 
-            togglePlay() {
-                if (!this.songUrl) { 
-                    alert("Aucune chanson chargée."); 
-                    return; 
-                }
-                
-                if (!this.isSongReady) {
-                    console.warn('⚠️ La chanson n\'est pas prête. Attente...');
-                    return;
-                }
-                
-                this.wavesurfer.playPause();
-            },
+           togglePlay() {
+    if (!this.songUrl) { 
+        alert("Aucune chanson chargée."); 
+        return; 
+    }
+    
+    if (this.mode === 'mix') {
+        // Mode MIX - Lecteur HTML5
+        const audio = this.$refs.audioPlayer;
+        if (audio.paused) {
+            audio.play();
+            this.isPlaying = true;
+        } else {
+            audio.pause();
+            this.isPlaying = false;
+        }
+    } else {
+        // Mode MP3 - WaveSurfer
+        if (!this.isSongReady) {
+            console.warn('⚠️ La chanson n\'est pas prête. Attente...');
+            return;
+        }
+        this.wavesurfer.playPause();
+    }
+},
 
             handleNextClick() {
                 if (this.isNavigatingHistory) this.nextSongFromHistory();
@@ -594,10 +637,18 @@ toggleMode() {
                 this.bgColor = '#333';
                 this.textColor = '#EEE';
                 
-                this.wavesurfer.load(songData.url);
-                
-                document.querySelector('#time').textContent = '0:00';
-                document.querySelector('#duration').textContent = '0:00';
+             // Charger le lecteur approprié
+if (this.mode === 'mix') {
+    // Pour MIX, l'audio HTML5 se charge automatiquement
+    this.currentTime = '0:00';
+    this.duration = '0:00';
+    this.isSongReady = true;
+} else {
+    // Pour MP3, utiliser WaveSurfer
+    this.wavesurfer.load(this.songUrl);
+    document.querySelector('#time').textContent = '0:00';
+    document.querySelector('#duration').textContent = '0:00';
+}
                 
                 this.isPlaying = false;
                 this.currentHistoryIndex = indexToLoad;

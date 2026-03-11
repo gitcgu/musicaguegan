@@ -1,0 +1,10 @@
+[[redirects]]
+  from = "/api/*"
+  to = "https://musica-backend-836359398199.europe-west1.run.app/api/:splat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

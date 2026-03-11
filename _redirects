@@ -1,8 +1,7 @@
-# Forwarder les API vers Cloud Run
 
- 
+/api/* https://musica-backend-836359398199.europe-west1.run.app/api/:splat 200
+/* /index.html 200 
 
-/api/* https://musica-backend-836359398199.europe-west1.run.app/api/:splat 200! # Garder le reste sur Netlify /* /index.html 200
 
  
 

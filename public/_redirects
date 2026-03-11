@@ -1,0 +1,2 @@
+/api/* https://musica-backend-836359398199.europe-west1.run.app/api/:splat 200
+/* /index.html 200

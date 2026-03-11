@@ -1,5 +1,8 @@
+[build]
+  publish = "public"
+
 [[redirects]]
   from = "/*"
   to = "https://musica-backend-836359398199.europe-west1.run.app/:splat"
-  status = 200
+  status = 302
   force = true
